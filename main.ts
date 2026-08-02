@@ -22,9 +22,6 @@ import {
   WebGLRenderer
 } from 'three';
 
-// XR Emulator
-import { DevUI } from '@iwer/devui';
-import { XRDevice, metaQuest3 } from 'iwer';
 
 // XR
 import { XRButton } from 'three/addons/webxr/XRButton.js';
@@ -34,31 +31,10 @@ import { XRButton } from 'three/addons/webxr/XRButton.js';
 
 // NOTE: three/addons alias is supported by Rollup: you can use it interchangeably with three/examples/jsm/  
 
-// Importing Ammo can be tricky.
-// Vite supports webassembly: https://vitejs.dev/guide/features.html#webassembly
-// so in theory this should work:
-//
-// import ammoinit from 'three/addons/libs/ammo.wasm.js?init';
-// ammoinit().then((AmmoLib) => {
-//  Ammo = AmmoLib.exports.Ammo()
-// })
-//
-// But the Ammo lib bundled with the THREE js examples does not seem to export modules properly.
-// A solution is to treat this library as a standalone file and copy it using 'vite-plugin-static-copy'.
-// See vite.config.js
-// 
-// Consider using alternatives like Oimo or cannon-es
+
 import {
   OrbitControls
 } from 'three/addons/controls/OrbitControls.js';
-
-import {
-  GLTFLoader
-} from 'three/addons/loaders/GLTFLoader.js';
-import { XRController } from 'iwer/lib/device/XRController';
-
-// Example of hard link to official repo for data, if needed
-// const MODEL_PATH = 'https://raw.githubusercontent.com/mrdoob/three.js/r173/examples/models/gltf/LeePerrySmith/LeePerrySmith.glb';
 
 
 
@@ -144,36 +120,6 @@ const init = () => {
 }
 
 init();
-
-//
-
-/*
-function loadData() {
-  new GLTFLoader()
-    .setPath('assets/models/')
-    .load('test.glb', gltfReader);
-}
-
-
-function gltfReader(gltf) {
-  let testModel = null;
-
-  testModel = gltf.scene;
-
-  if (testModel != null) {
-    console.log("Model loaded:  " + testModel);
-    scene.add(gltf.scene);
-  } else {
-    console.log("Load FAILED.  ");
-  }
-}
-
-loadData();
-*/
-
-
-// camera.position.z = 3;
-
 
 
 

@@ -1,7 +1,9 @@
-# three_vite_xr_ts
-THREE.js + WebXR template using [Vite](https://vitejs.dev).
+# gamma
 
-Allows testing and modifying [official THREE.js WebXR examples](https://threejs.org/examples/?q=webxr) locally, at lightning speed.
+A WebXR Game starter kit in TypeScript, providing essentials such as input management and a game loop.
+
+Inspired by [three_vite_xr_ts](https://github.com/fdoganis/three_vite_xr_ts) and https://www.gameprogrammingpatterns.com.
+
 
 ## Batteries included
 
@@ -27,22 +29,6 @@ Install [Node.js](https://nodejs.org)
 - `npm run dev` : launches a server and opens your browser in `https://localhost:5173` by default
   - Edit your code : your changes are reflected instantly!
 - `npm run build` : packages all code and resources into the `dist` folder, ready for deployment.
-
-## WARNING
-
-On Chrome >= 147 : Meta Immersive-Web-Emulator can not enter WebXR.
-
-See https://github.com/mrdoob/three.js/issues/33414
-
-There seems to be an issue with polyfills related to browsers now supporting [WebXR Layers](https://www.w3.org/TR/webxrlayers-1/)
-
-As a consequence the "Enter XR" button in Meta's WebXR Emulator has no effect.
-
-### Bypass:
-
-- None as of 2026-06-06
-- Check issue for updates and "hacks"
-- Or use Firefox ;)
 
 ## HTTPS
 
