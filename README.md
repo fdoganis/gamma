@@ -5,6 +5,8 @@ A WebXR Game starter kit in TypeScript, providing essentials such as input manag
 Inspired by [three_vite_xr_ts](https://github.com/fdoganis/three_vite_xr_ts) and https://www.gameprogrammingpatterns.com.
 
 
+**NOTE**: TypeScript is only used to enforce type checks while coding. All types are simply erased by the transpiler. See `tsconfig.json` and this [article](https://www.sitepoint.com/typescript-58-erasable-syntax-running-ts-directly-in-nodejs/) to understand how this works.
+
 ## Batteries included
 
 Pre-configured to support :
@@ -15,7 +17,7 @@ Pre-configured to support :
 - recommended VS Code extensions
 - deployment
 
-Have a look at vite.config.js and customize it to your needs (additional libraries, file formats etc.).
+Have a look at `vite.config.js` and customize it to your needs (additional libraries, file formats etc.).
 
 ## Installation
 
