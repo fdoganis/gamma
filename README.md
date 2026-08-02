@@ -10,9 +10,6 @@ Inspired by [three_vite_xr_ts](https://github.com/fdoganis/three_vite_xr_ts) and
 Pre-configured to support :
 
 - WebXR initialization
-- glTF file loading
-- ammo.js wasm physics library
-  - which is fast, but you might consider using the excellent and simpler [Cannon-es](https://fdoganis.github.io/slides/cannon.html) instead
 - VSCode launch scripts
 - THREE.js type definitions : for IntelliSense in VS Code
 - recommended VS Code extensions
