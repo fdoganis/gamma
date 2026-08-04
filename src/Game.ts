@@ -59,7 +59,20 @@ export class Game {
     this.renderer.xr.enabled = true;
 
     document.body.appendChild(this.renderer.domElement);
-    const xrButton = XRButton.createButton(this.renderer, {});
+
+    /*
+    {
+      'optionalFeatures': [ 'depth-sensing' ],
+      'depthSensing': { 'usagePreference': [ 'gpu-optimized' ], 'dataFormatPreference': [] }
+    } 
+    */
+
+
+    const sessionInit = {
+      'optionalFeatures': ['hand-tracking']
+    };
+
+    const xrButton = XRButton.createButton(this.renderer, sessionInit);
     xrButton.style.backgroundColor = 'skyblue';
     document.body.appendChild(xrButton);
   }
