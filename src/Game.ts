@@ -40,7 +40,7 @@ export class Game {
     this._initRenderer();
     this._initScene();
 
-    //this._initInput();
+    //this._initInput(); // TODO
 
     this._initXRSession();
 
@@ -86,10 +86,14 @@ export class Game {
         // Detect which kind of session and device we are dealing with (see XRMode)
         // More exhaustive XR device detection here : 
         // https://github.com/aframevr/aframe/blob/master/src/utils/device.js
-        session.addEventListener('inputsourceschange', () => {
-          if ([...session.inputSources].length > 0
-            && [...session.inputSources].every(s => s.targetRayMode === 'screen')) {
+        session.addEventListener('inputsourceschange', (e) => {
+          if ([...session.inputSources].length === 1
+            && [...session.inputSources][0].targetRayMode === 'screen') {
             this.xrmode = XRMode.MOBILE_AR;
+
+            // TODO: It seems, in emulators at least, that every tap triggers an 'inputsourcechange' event with 'added'
+            // Once a XRMode has been defined it should stay the same until the end of the session,
+            // i.e.: until 'sessionsend' has been called.
           }
         });
 
