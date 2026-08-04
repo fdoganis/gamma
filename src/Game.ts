@@ -23,11 +23,17 @@ const XRMode = {
   MOBILE_AR: Symbol('mobile_ar')
 };
 
+const FPS = 60;
+const FRAME_s = 1 / FPS;
+
 export class Game {
   renderer: WebGLRenderer = new WebGLRenderer({ antialias: true, alpha: true });
   scene: Scene = new Scene();
   camera: PerspectiveCamera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10);
+
+  // GameLoop
   timer: Timer = new Timer();
+  elapsed: number = 0;
 
   controls?: OrbitControls;
 
@@ -160,9 +166,14 @@ export class Game {
   // simple GameLoop
   loop = () => {
     this.timer.update();
-    const delta = this.timer.getDelta();
+    this.elapsed += this.timer.getDelta();
     this.processInput();
-    this.update(delta);
+
+    while (this.elapsed > FRAME_s) {
+      this.update(FRAME_s);
+      this.elapsed -= FRAME_s;
+    }
+
     this.render();
   }
 
