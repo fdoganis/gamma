@@ -6,7 +6,11 @@ import {
   PerspectiveCamera,
   Scene,
   WebGLRenderer,
-  Timer
+  Timer,
+  Vector3,
+  Quaternion,
+  Matrix4,
+  Color,
 } from 'three';
 
 import { XRButton } from 'three/addons/webxr/XRButton.js';
@@ -14,6 +18,21 @@ import { XRButton } from 'three/addons/webxr/XRButton.js';
 import {
   OrbitControls
 } from 'three/addons/controls/OrbitControls.js';
+
+
+import { ActionType } from '../input/ActionType';
+import { Action } from '../input/Action';
+import { InputProcessor } from '../input/InputProcessor';
+import { KeyboardInputSource } from '../input/KeyboardInputSource';
+import { IGameContext } from './IGameContext';
+import { State } from './State';
+import { GameIntroState } from './GameIntroState';
+
+import type { BufferGeometry } from 'three';
+import { CylinderGeometry } from 'three';
+import { MeshPhongMaterial } from 'three';
+import { InstancedMesh } from 'three';
+
 
 // Enum
 const XRMode = {
@@ -26,27 +45,45 @@ const XRMode = {
 const FPS = 60;
 const FRAME_s = 1 / FPS;
 
-export class Game {
+export class Game extends IGameContext {
+
+  // World
   renderer: WebGLRenderer = new WebGLRenderer({ antialias: true, alpha: true });
   scene: Scene = new Scene();
   camera: PerspectiveCamera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10);
+
+  // Input
+  input: InputProcessor = new InputProcessor();
 
   // GameLoop
   timer: Timer = new Timer();
   elapsed: number = 0;
 
+
   controls?: OrbitControls;
 
   xrmode: Symbol = XRMode.NONE;
 
+  _state: State = new GameIntroState();
+
+  // TODO: ARCHI: move elsewhere : Game World?
+  _geometry: BufferGeometry = new CylinderGeometry(0, 0.05, 0.2, 32).rotateX(Math.PI / 2);
+  _material: MeshPhongMaterial = new MeshPhongMaterial({ color: 0xffffff });
+  _MAX_TARGETS: number = 1024;
+  _instancedMesh: InstancedMesh = new InstancedMesh(this._geometry, this._material, this._MAX_TARGETS);
+  _ONE: Vector3 = new Vector3(1, 1, 1);
+  __mat4: Matrix4 = new Matrix4();
+
   constructor() {
 
+    super();
     this.timer.connect(document);   // allows timer to pause when tab is not visible
 
     this._initRenderer();
     this._initScene();
 
-    //this._initInput(); // TODO
+    this._initInput();
+
 
     this._initXRSession();
 
@@ -84,11 +121,47 @@ export class Game {
     this.scene.add(hemiLight);
   }
 
+  _initGeometry() {
+
+    // Set up all instances with random matrices
+
+    const matrix = new Matrix4();
+    const color = new Color();
+
+    for (let i = 0; i < this._MAX_TARGETS; i++) {
+
+      this._instancedMesh.setMatrixAt(i, matrix);
+      this._instancedMesh.setColorAt(i, color.setHex(Math.random() * 0xffffff));
+
+    }
+
+    // I'd like to set the number of instaces to zero but this seems to be problematic.
+    // If I do so I can't change the count later on
+    // Hack: setting hack to a small float value like 0.1 works, but seems fragile.
+    // Bypass: set count to 1 + invisible then set flag to visible. Semantically makes sense.
+    this._instancedMesh.count = 1;
+    this._instancedMesh.visible = false;
+
+    this._instancedMesh.instanceMatrix.needsUpdate = true;
+    if (this._instancedMesh.instanceColor) {
+      this._instancedMesh.instanceColor.needsUpdate = true;
+    }
+
+
+    this.scene.add(this._instancedMesh);
+
+    //this._instancedMesh.count = 0;
+
+  }
+
+
   _initScene() {
     this._onResize();
     this._initLights();
 
     this.camera.position.set(0, 1.6, 3); // Useless in XR: your head / mobile device drives the camera
+
+    this._initGeometry();
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.target.set(0, 1.6, 0);
@@ -102,6 +175,7 @@ export class Game {
       const session = this.renderer.xr.getSession();
       if (session) {
 
+        // TODO: OPTIONAL
         // Detect which kind of session and device we are dealing with (see XRMode)
         // More exhaustive XR device detection here : 
         // https://github.com/aframevr/aframe/blob/master/src/utils/device.js
@@ -132,6 +206,18 @@ export class Game {
       //this.input.exitXR();
     });
 
+  }
+
+  _initInput() {
+
+    // TODO: Create new InputMapper class?
+    // Taking json config?
+    // => InputManager
+    const kb = this.input.add(new KeyboardInputSource());
+    kb.bind('Space', new Action(ActionType.AIM));
+    kb.bind('Escape', new Action(ActionType.GAME_OVER));
+    kb.bind('Enter', new Action(ActionType.START));
+    kb.bind('KeyM', new Action(ActionType.TOGGLE_AUDIO));
 
   }
 
@@ -164,19 +250,60 @@ export class Game {
     return Object.fromEntries(new URLSearchParams(window.location.search).entries());
   }
 
+
   processInput() {
-    // TODO
+
+    this.input.collect()
+
+    for (const action of this.input.actions) {
+      if (action.type === ActionType.TOGGLE_AUDIO) {
+        // TODO: this.audio.toggle();
+        console.log("TOGGLE_AUDIO");
+      } else {
+        this._state.handleAction(this, action)
+      }
+    }
+  }
+
+
+
+  spawnTarget(position: Vector3, orientation: Quaternion): void {
+
+    if (this._instancedMesh.count === 1 && this._instancedMesh.visible === false) {
+      this._instancedMesh.visible = true;
+    } else if (this._instancedMesh.count < this._MAX_TARGETS) {
+      this._instancedMesh.count++;
+    }
+
+    this.__mat4.compose(position, orientation, this._ONE);
+    this._instancedMesh.setMatrixAt(this._instancedMesh.count - 1, this.__mat4); // instancedMesh reange ; [0, count]
+
+    this._instancedMesh.instanceMatrix.needsUpdate = true;
+    if (this._instancedMesh.instanceColor) {
+      this._instancedMesh.instanceColor.needsUpdate = true;
+    }
+
+
   }
 
   update(delta: number) {
-    // TODO
+    this._state.update(this, delta);
   }
+
 
   render() {
     this.renderer.render(this.scene, this.camera);
   }
 
-  // simple GameLoop
+
+  changeState(next: State) {
+    if (this._state) this._state.exit(this)
+    this._state = next
+    this._state.enter(this)
+  }
+
+
+  // GameLoop
   loop = () => {
     this.timer.update();
     this.elapsed += this.timer.getDelta();
@@ -194,4 +321,22 @@ export class Game {
     this.renderer.setAnimationLoop(this.loop);
   }
 }
+
+
+// TODO: ARCHI: Refactoring
+// Game class keeps growing, we need to split responsibilities
+// _rendering: RenderingManager : owns renderer, scene, camera, controls, lights
+// _input : InputManager : owns input processor and all sources, XR session toggling?
+// _audio : AudioManager : see https://github.com/mrdoob/three.js/blob/master/examples/webxr_xr_haptics.html
+
+// Avoid new
+// _states  : { intro, running, gameOver }   pre-allocated, reused
+// _state   : State
+
+// Extract GameLoop? Needs multiple inheritance for dependency inversion?
+// IGameLoopHost -> processInput / update / render (thin delegation)
+// IGameContext -> changeState / audio / targets (thin delegation)
+
+// Then proceed with more input sources, text etc.
+
 
