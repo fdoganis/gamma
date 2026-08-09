@@ -1,342 +1,167 @@
 
+import { GameLoop } from './GameLoop';
+import { StateMachine } from './StateMachine';
+import { RenderingManager } from '../managers/RenderingManager';
+import { InputManager } from '../input/InputManager';
+import { AudioManager } from '../audio/AudioManager';
+import { World } from '../world/World';
+import { SelectCommand } from '../commands/SelectCommand';
+import { GameIntroState } from '../states/GameIntroState';
+import { GameRunningState } from '../states/GameRunningState';
+import { GameOverState } from '../states/GameOverState';
 
-import {
-  AmbientLight,
-  HemisphereLight,
-  PerspectiveCamera,
-  Scene,
-  WebGLRenderer,
-  Timer,
-  Vector3,
-  Quaternion,
-  Matrix4,
-  Color,
-} from 'three';
+export class Game {
+  #rendering: RenderingManager = new RenderingManager();
+  #world: World = new World(this.#rendering.scene);
+  #input: InputManager = new InputManager(this.#rendering.renderer, this.#rendering.scene);
+  #audio: AudioManager = new AudioManager(this.#rendering.camera);
 
-import { XRButton } from 'three/addons/webxr/XRButton.js';
+  #sm!: StateMachine;
 
-import {
-  OrbitControls
-} from 'three/addons/controls/OrbitControls.js';
-
-
-import { ActionType } from '../input/ActionType';
-import { Action } from '../input/Action';
-import { InputProcessor } from '../input/InputProcessor';
-import { KeyboardInputSource } from '../input/KeyboardInputSource';
-import { IGameContext } from './IGameContext';
-import { State } from './State';
-import { GameIntroState } from './GameIntroState';
-
-import type { BufferGeometry } from 'three';
-import { CylinderGeometry } from 'three';
-import { MeshPhongMaterial } from 'three';
-import { InstancedMesh } from 'three';
-
-
-// Enum
-const XRMode = {
-  NONE: Symbol('none'),
-  VR: Symbol('vr'),
-  AR: Symbol('ar'),
-  MOBILE_AR: Symbol('mobile_ar')
-};
-
-const FPS = 60;
-const FRAME_s = 1 / FPS;
-
-export class Game extends IGameContext {
-
-  // World
-  renderer: WebGLRenderer = new WebGLRenderer({ antialias: true, alpha: true });
-  scene: Scene = new Scene();
-  camera: PerspectiveCamera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10);
-
-  // Input
-  input: InputProcessor = new InputProcessor();
-
-  // GameLoop
-  timer: Timer = new Timer();
-  elapsed: number = 0;
-
-
-  controls?: OrbitControls;
-
-  xrmode: Symbol = XRMode.NONE;
-
-  _state: State = new GameIntroState();
-
-  // TODO: ARCHI: move elsewhere : Game World?
-  _geometry: BufferGeometry = new CylinderGeometry(0, 0.05, 0.2, 32).rotateX(Math.PI / 2);
-  _material: MeshPhongMaterial = new MeshPhongMaterial({ color: 0xffffff });
-  _MAX_TARGETS: number = 1024;
-  _instancedMesh: InstancedMesh = new InstancedMesh(this._geometry, this._material, this._MAX_TARGETS);
-  _ONE: Vector3 = new Vector3(1, 1, 1);
-  __mat4: Matrix4 = new Matrix4();
+  #loop: GameLoop = new GameLoop(this);
 
   constructor() {
-
-    super();
-    this.timer.connect(document);   // allows timer to pause when tab is not visible
-
-    this._initRenderer();
-    this._initScene();
-
-    this._initInput();
-
-
-    this._initXRSession();
-
-    window.addEventListener('resize', this._onResize);
+    this.#buildStateMachine();
+    this.#bindInput();
   }
 
-  _initRenderer() {
-    this.renderer.setPixelRatio(window.devicePixelRatio);
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.xr.enabled = true;
-
-    document.body.appendChild(this.renderer.domElement);
-
-    /*
-    {
-      'optionalFeatures': [ 'depth-sensing' ],
-      'depthSensing': { 'usagePreference': [ 'gpu-optimized' ], 'dataFormatPreference': [] }
-    } 
-    */
-
-
-    const sessionInit = {
-      'optionalFeatures': ['hand-tracking']
-    };
-
-    const xrButton = XRButton.createButton(this.renderer, sessionInit);
-    xrButton.style.backgroundColor = 'skyblue';
-    document.body.appendChild(xrButton);
+  #buildStateMachine() {
+    this.#sm = new StateMachine();
+    // Class constructors as keys, unique by identity, refactor-safe, minification-safe.
+    // Transitions are closures wired here: states never import each other.
+    this.#sm.register(GameIntroState, new GameIntroState(this.#sm));
+    this.#sm.register(GameRunningState, new GameRunningState(this.#world, this.#audio));
+    this.#sm.register(GameOverState, new GameOverState(this.#sm));
+    this.#sm.start(GameIntroState);
   }
 
-  _initLights() {
-    this.scene.add(new AmbientLight(0xffffff, 1.0));
-    const hemiLight = new HemisphereLight(0xffffff, 0xbbbbff, 3);
-    hemiLight.position.set(0.5, 1, 0.25);
-    this.scene.add(hemiLight);
+  #bindInput() {
+    const { xrLeft, xrRight, handLeft, handRight } = this.#input;
+    // One pre-allocated instance per source, created here once, reused every frame.
+    // matrixWorld is read at dispatch time (in World.spawn), not at binding time.
+    xrLeft.bind('select', new SelectCommand(xrLeft.node));
+    xrRight.bind('select', new SelectCommand(xrRight.node));
+    handLeft.bind('select', new SelectCommand(handLeft.node));
+    handRight.bind('select', new SelectCommand(handRight.node));
   }
 
-  _initGeometry() {
-
-    // Set up all instances with random matrices
-
-    const matrix = new Matrix4();
-    const color = new Color();
-
-    for (let i = 0; i < this._MAX_TARGETS; i++) {
-
-      this._instancedMesh.setMatrixAt(i, matrix);
-      this._instancedMesh.setColorAt(i, color.setHex(Math.random() * 0xffffff));
-
-    }
-
-    // I'd like to set the number of instaces to zero but this seems to be problematic.
-    // If I do so I can't change the count later on
-    // Hack: setting hack to a small float value like 0.1 works, but seems fragile.
-    // Bypass: set count to 1 + invisible then set flag to visible. Semantically makes sense.
-    this._instancedMesh.count = 1;
-    this._instancedMesh.visible = false;
-
-    this._instancedMesh.instanceMatrix.needsUpdate = true;
-    if (this._instancedMesh.instanceColor) {
-      this._instancedMesh.instanceColor.needsUpdate = true;
-    }
-
-
-    this.scene.add(this._instancedMesh);
-
-    //this._instancedMesh.count = 0;
-
-  }
-
-
-  _initScene() {
-    this._onResize();
-    this._initLights();
-
-    this.camera.position.set(0, 1.6, 3); // Useless in XR: your head / mobile device drives the camera
-
-    this._initGeometry();
-
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.target.set(0, 1.6, 0);
-    this.controls.update();
-  }
-
-  _initXRSession() {
-    this.renderer.xr.addEventListener('sessionstart', () => {
-      if (this.controls) this.controls.enabled = false;
-
-      const session = this.renderer.xr.getSession();
-      if (session) {
-
-        // TODO: OPTIONAL
-        // Detect which kind of session and device we are dealing with (see XRMode)
-        // More exhaustive XR device detection here : 
-        // https://github.com/aframevr/aframe/blob/master/src/utils/device.js
-        session.addEventListener('inputsourceschange', (e) => {
-          if ([...session.inputSources].length === 1
-            && [...session.inputSources][0].targetRayMode === 'screen') {
-            this.xrmode = XRMode.MOBILE_AR;
-
-            // TODO: It seems, in emulators at least, that every tap triggers an 'inputsourcechange' event with 'added'
-            // Once a XRMode has been defined it should stay the same until the end of the session,
-            // i.e.: until 'sessionsend' has been called.
-          }
-        });
-
-        if (session.environmentBlendMode !== 'opaque') {
-          this.xrmode = XRMode.AR;
-        }
-        else {
-          this.xrmode = XRMode.VR;
-        }
-      }
-
-      //this.input.enterXR();
-    });
-
-    this.renderer.xr.addEventListener('sessionend', () => {
-      if (this.controls) this.controls.enabled = true;
-      //this.input.exitXR();
-    });
-
-  }
-
-  _initInput() {
-
-    // TODO: Create new InputMapper class?
-    // Taking json config?
-    // => InputManager
-    const kb = this.input.add(new KeyboardInputSource());
-    kb.bind('Space', new Action(ActionType.AIM));
-    kb.bind('Escape', new Action(ActionType.GAME_OVER));
-    kb.bind('Enter', new Action(ActionType.START));
-    kb.bind('KeyM', new Action(ActionType.TOGGLE_AUDIO));
-
-  }
-
-  _onResize = () => {
-    // Don't resize while in XR
-    if (this.renderer.xr?.isPresenting) { return; }
-
-    this.camera.aspect = window.innerWidth / window.innerHeight;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-  };
-
-  /**
-  * Returns the query parameters as a key/value object. 
-  * Example: If the query parameters are
-  *
-  *    abc=123&def=456&name=gman
-  *
-  * Then `getQuery()` will return an object like
-  *
-  *    {
-  *      abc: '123',
-  *      def: '456',
-  *      name: 'gman',
-  *    }
-  * 
-  * source: https://threejs.org/manual/#en/debugging-javascript 
-  */
-  getQuery() {
-    return Object.fromEntries(new URLSearchParams(window.location.search).entries());
-  }
-
-
+  // GPP ch.9 : three phases, no conditionals, no knowledge of what commands do
   processInput() {
-
-    this.input.collect()
-
-    for (const action of this.input.actions) {
-      if (action.type === ActionType.TOGGLE_AUDIO) {
-        // TODO: this.audio.toggle();
-        console.log("TOGGLE_AUDIO");
-      } else {
-        this._state.handleAction(this, action)
-      }
+    this.#input.collect();
+    for (const cmd of this.#input.commands) {
+      this.#sm.dispatch(cmd);
     }
-  }
-
-
-
-  spawnTarget(position: Vector3, orientation: Quaternion): void {
-
-    if (this._instancedMesh.count === 1 && this._instancedMesh.visible === false) {
-      this._instancedMesh.visible = true;
-    } else if (this._instancedMesh.count < this._MAX_TARGETS) {
-      this._instancedMesh.count++;
-    }
-
-    this.__mat4.compose(position, orientation, this._ONE);
-    this._instancedMesh.setMatrixAt(this._instancedMesh.count - 1, this.__mat4); // instancedMesh reange ; [0, count]
-
-    this._instancedMesh.instanceMatrix.needsUpdate = true;
-    if (this._instancedMesh.instanceColor) {
-      this._instancedMesh.instanceColor.needsUpdate = true;
-    }
-
-
   }
 
   update(delta: number) {
-    this._state.update(this, delta);
+    this.#sm.update(delta);
   }
-
 
   render() {
-    this.renderer.render(this.scene, this.camera);
+    this.#rendering.render();
   }
 
-
-  changeState(next: State) {
-    if (this._state) this._state.exit(this)
-    this._state = next
-    this._state.enter(this)
-  }
-
-
-  // GameLoop
-  loop = () => {
-    this.timer.update();
-    this.elapsed += this.timer.getDelta();
-    this.processInput();
-
-    while (this.elapsed > FRAME_s) {
-      this.update(FRAME_s);
-      this.elapsed -= FRAME_s;
-    }
-
-    this.render();
+  dispose() {
+    this.#rendering.renderer.setAnimationLoop(null); // releases tick -> GameLoop -> GC
+    this.#input.dispose();
+    this.#world.dispose();  // materials + geometry disposed here
+    this.#audio.dispose();
+    this.#rendering.dispose();
   }
 
   start() {
-    this.renderer.setAnimationLoop(this.loop);
+    this.#rendering.renderer.setAnimationLoop(this.#loop.tick);
   }
 }
 
 
-// TODO: ARCHI: Refactoring
-// Game class keeps growing, we need to split responsibilities
-// _rendering: RenderingManager : owns renderer, scene, camera, controls, lights
-// _input : InputManager : owns input processor and all sources, XR session toggling?
-// _audio : AudioManager : see https://github.com/mrdoob/three.js/blob/master/examples/webxr_xr_haptics.html
+/*
+import { RenderingManager } from '../managers/RenderingManager';
+import { InputManager } from '../managers/InputManager';
+import { AudioManager } from '../audio/AudioManager';
+import { StateMachine } from './StateMachine';
+import { GameLoop } from './GameLoop';
+import { GameIntroState } from '../states/GameIntroState';
+import { GameRunningState } from '../states/GameRunningState';
+import { GameOverState } from '../states/GameOverState';
 
-// Avoid new
-// _states  : { intro, running, gameOver }   pre-allocated, reused
-// _state   : State
+import { ChangeStateCommand } from '../commands/ChangeStateCommand';
+import { ToggleAudioCommand } from '../commands/ToggleAudioCommand';
+import { SpawnConeCommand } from '../commands/SpawnConeCommand';
 
-// Extract GameLoop? Needs multiple inheritance for dependency inversion?
-// IGameLoopHost -> processInput / update / render (thin delegation)
-// IGameContext -> changeState / audio / targets (thin delegation)
+export class Game {
+  rendering!: RenderingManager;
+  input: InputManager;
+  audio: AudioManager;
 
-// Then proceed with more input sources, text etc.
+  sm: StateMachine = new StateMachine();
+
+  #loop: GameLoop = new GameLoop(this);
 
 
+  constructor() {
+    this.rendering = new RenderingManager();
+    this.audio = new AudioManager(this.rendering.camera);
+    this.input = new InputManager(this.rendering.renderer, this.rendering.scene);
+
+    this.#buildStateMachine();
+    this.#bindInput();
+  }
+
+  #buildStateMachine() {
+    this.sm.register(GameIntroState, new GameIntroState());
+    this.sm.register(GameRunningState, new GameRunningState());
+    this.sm.register(GameOverState, new GameOverState());
+
+    this.sm.start(GameRunningState);
+  }
+
+  #bindInput() {
+    const { keyboard: kb, xrLeft, xrRight, handLeft, handRight } = this.input;
+    const audio = this.audio;
+    const sm = this.sm;
+
+    // state transitions
+    kb.bind('Enter', new ChangeStateCommand(sm, GameIntroState, GameRunningState));
+    kb.bind('Escape', new ChangeStateCommand(sm, GameRunningState, GameOverState));
+    kb.bind('Backspace', new ChangeStateCommand(sm, GameOverState, GameIntroState));
+
+    kb.bind('Space', new SpawnConeCommand(this.rendering, , audio);
+
+    kb.bind('Tab', new ToggleAudioCommand(audio));
+
+    // TODO: FIXME: ARCHI: PERF : a new command is created!
+    // How to pre allocate it? Who is responsible of the lifecycle of the commands?
+    // Should the input processor delete them once it has consumed them?
+    xrLeft?.bind('select', new SpawnConeCommand(this.rendering, xrLeft.node, audio));
+    xrRight?.bind('select', new SpawnConeCommand(this.rendering, xrRight.node, audio));
+    handLeft?.bind('select', new SpawnConeCommand(this.rendering, handLeft.node, audio));
+    handRight?.bind('select', new SpawnConeCommand(this.rendering, handRight.node, audio));
+  }
+
+  processInput() {
+    this.input.collect();
+    for (const cmd of this.input.commands) cmd.execute();
+  }
+
+  update(_delta: number) { }   // ready for StateMachine
+
+  render() {
+    this.rendering.render();
+  }
+
+  dispose() {
+    this.input.dispose();
+    this.audio.dispose();
+    this.rendering.dispose();
+
+    // TODO: ARCHI: LifeCycle: dispose bound commands?
+    //SpawnConeCommand.disposeGeo();?
+  }
+
+  start() {
+    this.rendering.renderer.setAnimationLoop(this.#loop.tick);
+  }
+}
+
+*/

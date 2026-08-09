@@ -1,34 +1,34 @@
-import type { Action } from "./Action";
-import { InputSource } from "./InputSource";
+import type { Command } from '../core/Command';
+import { InputSource } from './InputSource';
 
 export class InputProcessor {
 
-  sources: InputSource[] = []
-  actions: Action[] = []
+  #sources: InputSource[] = []
+  commands: Command[] = []
 
   add(source: InputSource) {
-    this.sources.push(source);
+    this.#sources.push(source);
     return source;
   }
 
 
   collect() {
-    this.actions.length = 0
-    for (const source of this.sources) {
-      source.poll();
+    this.commands.length = 0;
+    for (const src of this.#sources) {
+      src.poll();
 
-      for (const action of source.queue) {
-        this.actions.push(action);
+      for (const cmd of src.queue) {
+        this.commands.push(cmd);
       }
 
-      source.queue.length = 0
+      src.queue.length = 0;
     }
   }
 
 
   dispose() {
-    for (const source of this.sources) {
-      source.dispose();
+    for (const src of this.#sources) {
+      src.dispose();
     }
   }
 }

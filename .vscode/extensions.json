@@ -9,6 +9,7 @@
     "slevesque.shader",
     "raczzalan.webgl-glsl-editor",
     "Gruntfuggly.todo-tree",
-    "vivaxy.vscode-conventional-commits"
+    "vivaxy.vscode-conventional-commits",
+    "alexshen.classdiagram-ts"
   ]
 }

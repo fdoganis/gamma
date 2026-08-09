@@ -1,45 +1,72 @@
-import { InputSource } from "./InputSource";
-import type { Object3D } from "three";
+import { InputSource } from './InputSource';
+import { Command } from '../core/Command';
+import type {
+  IXRNode,
+  XRHandedness,
+  XRBindableEvent,
+  XRNodeHandler,
+  XRNodeEvent
+} from '../types/XRTypes';
+
+import type { Vector3 } from 'three';
 
 // TODO: FIXME: WIP
 
-// works for both getController(n) and getHand(n) slots
-// Three.js routes controller events to getController and hand events to getHand
-// 'connected'   fires when a physical device occupies this slot
-// 'disconnected' fires on loss (battery, tracking lost, inputsourceslost)
-// export class SpatialInputSource extends InputSource {
-//   xrcontroller: Object3D;
-//   handedness: string;        // 'left' | 'right'
-//   bindings: Object = {};   // event -> handler (kept for dispose)
+export class SpatialInputSource extends InputSource {
+  #node: IXRNode;
+  #handedness: XRHandedness;
+  #handlers: Partial<Record<XRBindableEvent, XRNodeHandler>> = {};
 
-//   constructor(xrcontroller: Object3D, handedness: string) {
-//     super();
-//     this.xrcontroller = xrcontroller;
-//     this.handedness = handedness;
-//     this.enabled = false;   // disabled until device physically connects
-//     xrcontroller.addEventListener('connected', this._onConnected);
-//     xrcontroller.addEventListener('disconnected', this._onDisconnected);
-//   }
+  //#gamepad: Gamepad | null = null;
 
-//   bind(event: string, command: Command) {
-//     const handler = () => { if (this.enabled) this.queue.push(command); };
-//     this.bindings[event] = handler;
-//     this.xrcontroller.addEventListener(event, handler);
-//   }
+  constructor(node: IXRNode, handedness: XRHandedness) {
+    super();
+    this.#node = node;
+    this.#handedness = handedness;
+    this.enabled = false; // off until matching device physically connects
+    node.addEventListener('connected', this.#onConnected);
+    node.addEventListener('disconnected', this.#onDisconnected);
+  }
 
-//   _onConnected = (e: any) => {
-//     this.enabled = e.data.handedness === this.handedness;
-//   };
+  get position(): Vector3 { return this.#node.position; }
 
-//   _onDisconnected = () => {
-//     this.enabled = false;
-//     this.queue.length = 0;    // drop commands queued before loss
-//   };
+  get node(): IXRNode { return this.#node; }
 
-//   dispose() {
-//     this.xrcontroller.removeEventListener('connected', this._onConnected);
-//     this.xrcontroller.removeEventListener('disconnected', this._onDisconnected);
-//     for (const [event, handler] of Object.entries(this.bindings))
-//       this.xrcontroller.removeEventListener(event, handler);
-//   }
-// }
+  bind(event: XRBindableEvent, command: Command): void {
+    const prev = this.#handlers[event];
+    if (prev) { this.#node.removeEventListener(event, prev); }
+
+    const handler: XRNodeHandler = (): void => {
+      if (this.enabled) {
+        this.queue.push(command);
+      }
+    };
+    this.#handlers[event] = handler;
+    this.#node.addEventListener(event, handler);
+  }
+
+  rumble(intensity: number, duration: number = 100) {
+    //this._gamepad?.hapticActuators?.[0]?.pulse(intensity, duration);
+    // TODO: Mobile: navigator.vibrate?
+    console.log('BRRRRRR');
+  }
+
+  #onConnected = (e: XRNodeEvent): void => {
+    this.enabled = e.data?.handedness === this.#handedness;
+    // this._gamepad = e?.data?.gamepad; // TODO: FIXME: CHECK
+  }
+
+  #onDisconnected = (): void => {
+    this.enabled = false;
+    this.queue.length = 0;
+    //this._gamepad = null;
+
+  }
+
+  dispose() {
+    this.#node.removeEventListener('connected', this.#onConnected);
+    this.#node.removeEventListener('disconnected', this.#onDisconnected);
+    for (const event of Object.keys(this.#handlers) as XRBindableEvent[])
+      this.#node.removeEventListener(event, this.#handlers[event]!);
+  }
+}
