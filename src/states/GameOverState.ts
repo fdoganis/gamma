@@ -12,7 +12,7 @@ export class GameOverState extends State {
     this.#registerHandlers();
   }
 
-  #registerHandlers(): void {
+  #registerHandlers() {
     this.on(SelectCommand, this.#onSelect);
   }
 

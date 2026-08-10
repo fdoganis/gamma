@@ -5,7 +5,7 @@ import type { ClassOf } from '../types/ClassOf';
 
 // Structural type, satisfied by StateMachine itself.
 // Exported so states can declare the only dependency they need.
-export type ITransition = { change(StateClass: ClassOf<State>) };
+export type ITransition = { change(StateClass: ClassOf<State>): void };
 
 export class StateMachine {
   #states = new Map<ClassOf<State>, State>();

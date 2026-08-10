@@ -35,7 +35,7 @@ export class GamepadInputSource extends InputSource {
     this.#command = new SelectCommand(node, handedness); // shares the controller's live transform
   }
 
-  override poll(): void {
+  override poll() {
     if (!this.enabled) return;
 
     const gp = findXRGamepadInHand(this.#xr, this.#handedness);

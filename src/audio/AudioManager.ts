@@ -20,7 +20,7 @@ export class AudioManager {
     camera.add(this.#listener);
   }
 
-  load(id: string, url: string, loop = false, volume = 1): void {
+  load(id: string, url: string, loop = false, volume = 1) {
     const sound = new Audio(this.#listener);
     new AudioLoader().load(url, (buffer: AudioBuffer) => {
       sound.setBuffer(buffer);
@@ -30,7 +30,7 @@ export class AudioManager {
     this.#clips[id] = sound;
   }
 
-  play(id: string): void {
+  play(id: string) {
     const s = this.#clips[id];
     if (!this.#muted && s && !s.isPlaying) s.play();
   }
@@ -38,7 +38,7 @@ export class AudioManager {
   // No assets needed
   // TODO: add zzFx, SoundBox / pl_synth support
   // TODO: don't create nodes on the fly! Store them. This should actually be a sub-class
-  tone(frequency = 440, duration = 0.15, type: OscillatorType = 'sine'): void {
+  tone(frequency = 440, duration = 0.15, type: OscillatorType = 'sine') {
     if (this.#muted) return;
     const ctx = this.#listener.context;
     const osc = ctx.createOscillator();
@@ -52,14 +52,14 @@ export class AudioManager {
     osc.stop(ctx.currentTime + duration);
   }
 
-  toggle(): void { this.#muted ? this.activate() : this.deactivate(); }
+  toggle() { this.#muted ? this.activate() : this.deactivate(); }
 
-  activate(): void {
+  activate() {
     this.#muted = false;
     if (this.#listener.context.state === 'suspended') this.#listener.context.resume();
   }
 
-  deactivate(): void {
+  deactivate() {
     this.#muted = true;
     for (const id in this.#clips) {
       const s = this.#clips[id];
@@ -67,5 +67,5 @@ export class AudioManager {
     }
   }
 
-  dispose(): void { this.deactivate(); this.#listener.removeFromParent(); }
+  dispose() { this.deactivate(); this.#listener.removeFromParent(); }
 }
