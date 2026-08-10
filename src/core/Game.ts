@@ -9,12 +9,14 @@ import { SelectCommand } from '../commands/SelectCommand';
 import { GameIntroState } from '../states/GameIntroState';
 import { GameRunningState } from '../states/GameRunningState';
 import { GameOverState } from '../states/GameOverState';
+import { HapticsManager } from '../haptics/HapticsManager';
 
 export class Game {
   #rendering: RenderingManager = new RenderingManager();
   #world: World = new World(this.#rendering.scene);
-  #input: InputManager = new InputManager(this.#rendering.renderer, this.#rendering.scene);
+  #input: InputManager = new InputManager(this.#rendering.renderer, this.#rendering.scene, this.#rendering.camera);
   #audio: AudioManager = new AudioManager(this.#rendering.camera);
+  #haptics = new HapticsManager(this.#rendering.renderer.xr);
 
   #sm!: StateMachine;
 
@@ -30,19 +32,18 @@ export class Game {
     // Class constructors as keys, unique by identity, refactor-safe, minification-safe.
     // Transitions are closures wired here: states never import each other.
     this.#sm.register(GameIntroState, new GameIntroState(this.#sm));
-    this.#sm.register(GameRunningState, new GameRunningState(this.#world, this.#audio));
+    this.#sm.register(GameRunningState, new GameRunningState(this.#world, this.#audio, this.#haptics));
     this.#sm.register(GameOverState, new GameOverState(this.#sm));
     this.#sm.start(GameIntroState);
   }
 
-  #bindInput() {
-    const { xrLeft, xrRight, handLeft, handRight } = this.#input;
-    // One pre-allocated instance per source, created here once, reused every frame.
-    // matrixWorld is read at dispatch time (in World.spawn), not at binding time.
-    xrLeft.bind('select', new SelectCommand(xrLeft.node));
-    xrRight.bind('select', new SelectCommand(xrRight.node));
-    handLeft.bind('select', new SelectCommand(handLeft.node));
-    handRight.bind('select', new SelectCommand(handRight.node));
+  #bindInput(): void {
+    const { xrLeft, xrRight, handLeft, handRight, arScreen } = this.#input;
+    xrLeft.bind('select', new SelectCommand(xrLeft.node, 'left'));
+    xrRight.bind('select', new SelectCommand(xrRight.node, 'right'));
+    handLeft.bind('select', new SelectCommand(handLeft.node, 'left'));
+    handRight.bind('select', new SelectCommand(handRight.node, 'right'));
+    arScreen.bind('select', new SelectCommand(arScreen.node, 'none'));
   }
 
   // GPP ch.9 : three phases, no conditionals, no knowledge of what commands do
@@ -67,6 +68,8 @@ export class Game {
     this.#world.dispose();  // materials + geometry disposed here
     this.#audio.dispose();
     this.#rendering.dispose();
+
+    // TODO: dispose haptics?
   }
 
   start() {

@@ -35,6 +35,23 @@ export class AudioManager {
     if (!this.#muted && s && !s.isPlaying) s.play();
   }
 
+  // No assets needed
+  // TODO: add zzFx, SoundBox / pl_synth support
+  // TODO: don't create nodes on the fly! Store them. This should actually be a sub-class
+  tone(frequency = 440, duration = 0.15, type: OscillatorType = 'sine'): void {
+    if (this.#muted) return;
+    const ctx = this.#listener.context;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = frequency;
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+    osc.connect(gain).connect(this.#listener.getInput());
+    osc.start();
+    osc.stop(ctx.currentTime + duration);
+  }
+
   toggle(): void { this.#muted ? this.activate() : this.deactivate(); }
 
   activate(): void {

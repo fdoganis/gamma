@@ -28,7 +28,7 @@ export class World {
     this.#geo.rotateX(Math.PI / 2);
   }
 
-  spawn(transform: ITransform): void {
+  spawn(transform: ITransform) {
     this.#_pos.set(0, 0, -0.3).applyMatrix4(transform.matrixWorld);
     this.#_quat.setFromRotationMatrix(transform.matrixWorld);
     const material = new MeshPhongMaterial({ color: Math.random() * 0xffffff });
@@ -39,7 +39,7 @@ export class World {
     this.#em.create({ mesh, material });
   }
 
-  dispose(): void {
+  dispose() {
     this.#em.forEach(({ mesh, material }) => {
       this.#scene.remove(mesh);
       material.dispose();

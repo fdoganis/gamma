@@ -32,11 +32,11 @@ export class SpatialInputSource extends InputSource {
 
   get node(): IXRNode { return this.#node; }
 
-  bind(event: XRBindableEvent, command: Command): void {
+  bind(event: XRBindableEvent, command: Command) {
     const prev = this.#handlers[event];
     if (prev) { this.#node.removeEventListener(event, prev); }
 
-    const handler: XRNodeHandler = (): void => {
+    const handler: XRNodeHandler = () => {
       if (this.enabled) {
         this.queue.push(command);
       }
@@ -51,12 +51,12 @@ export class SpatialInputSource extends InputSource {
     console.log('BRRRRRR');
   }
 
-  #onConnected = (e: XRNodeEvent): void => {
+  #onConnected = (e: XRNodeEvent) => {
     this.enabled = e.data?.handedness === this.#handedness;
     // this._gamepad = e?.data?.gamepad; // TODO: FIXME: CHECK
   }
 
-  #onDisconnected = (): void => {
+  #onDisconnected = () => {
     this.enabled = false;
     this.queue.length = 0;
     //this._gamepad = null;

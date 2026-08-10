@@ -5,7 +5,7 @@ import type { ClassOf } from '../types/ClassOf';
 
 // Structural type, satisfied by StateMachine itself.
 // Exported so states can declare the only dependency they need.
-export type ITransition = { change(StateClass: ClassOf<State>): void };
+export type ITransition = { change(StateClass: ClassOf<State>) };
 
 export class StateMachine {
   #states = new Map<ClassOf<State>, State>();
@@ -17,13 +17,13 @@ export class StateMachine {
     return this;
   }
 
-  start(StateClass: ClassOf<State>): void {
+  start(StateClass: ClassOf<State>) {
     this.#currentClass = StateClass;
     this.#current = this.#states.get(StateClass) ?? null;
     this.#current?.enter();
   }
 
-  change(StateClass: ClassOf<State>): void {
+  change(StateClass: ClassOf<State>) {
     if (this.#currentClass === StateClass) return;
     this.#current?.exit();
     this.#currentClass = StateClass;
@@ -34,8 +34,8 @@ export class StateMachine {
   get currentClass(): ClassOf<State> | null { return this.#currentClass; }
 
   // routes a command to the current state : GPP's handleInput()
-  dispatch(cmd: Command): void { this.#current?.handle(cmd); }
+  dispatch(cmd: Command) { this.#current?.handle(cmd); }
 
   // advances time-based logic in the current state : GPP's update()
-  update(delta: number): void { this.#current?.update(delta); }
+  update(delta: number) { this.#current?.update(delta); }
 }

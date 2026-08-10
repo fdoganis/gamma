@@ -11,7 +11,8 @@ import { XRButton } from 'three/addons/webxr/XRButton.js';
 export class RenderingManager {
   scene: Scene;
   camera: PerspectiveCamera;
-  renderer: WebGLRenderer; controls: OrbitControls;
+  renderer: WebGLRenderer;
+  controls: OrbitControls;
 
   constructor() {
     this.renderer = new WebGLRenderer({ antialias: true, alpha: true });
@@ -43,19 +44,21 @@ export class RenderingManager {
     window.addEventListener('resize', this.#onResize);
   }
 
-  render(): void { this.renderer.render(this.scene, this.camera); }
+  render() { this.renderer.render(this.scene, this.camera); }
 
-  #onXRStart = (): void => { this.controls.enabled = false; };
+  #onXRStart = () => { this.controls.enabled = false; };
 
-  #onXREnd = (): void => { this.controls.enabled = true; };
+  #onXREnd = () => { this.controls.enabled = true; };
 
-  #onResize = (): void => {
+  #onResize = () => {
+    if (this.renderer.xr.isPresenting) { return; }
+
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
   };
 
-  dispose(): void {
+  dispose() {
     this.renderer.xr.removeEventListener('sessionstart', this.#onXRStart);
     this.renderer.xr.removeEventListener('sessionend', this.#onXREnd);
     window.removeEventListener('resize', this.#onResize);

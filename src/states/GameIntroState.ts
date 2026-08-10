@@ -12,7 +12,7 @@ export class GameIntroState extends State {
     this.#registerHandlers();
   }
 
-  #registerHandlers(): void {
+  #registerHandlers() {
     // "select in intro" = start the game
     // cmd unused -> intro doesn't care where the select came from
     this.on(SelectCommand, this.#onSelect);
