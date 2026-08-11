@@ -5,14 +5,14 @@ import {
   AmbientLight,
   HemisphereLight
 } from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+//import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { XRButton } from 'three/addons/webxr/XRButton.js';
 
 export class RenderingManager {
   scene: Scene;
   camera: PerspectiveCamera;
   renderer: WebGLRenderer;
-  controls: OrbitControls;
+  //controls: OrbitControls;
 
   constructor() {
     this.renderer = new WebGLRenderer({ antialias: true, alpha: true });
@@ -34,9 +34,9 @@ export class RenderingManager {
     hemi.position.set(0.5, 1, 0.25);
     this.scene.add(hemi);
 
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.target.set(0, 1.6, 0);
-    this.controls.update();
+    // this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    // this.controls.target.set(0, 1.6, 0);
+    // this.controls.update();
 
     // XR only affects OrbitControls — self-contained here, Game is unaware
     this.renderer.xr.addEventListener('sessionstart', this.#onXRStart);
@@ -46,9 +46,13 @@ export class RenderingManager {
 
   render() { this.renderer.render(this.scene, this.camera); }
 
-  #onXRStart = () => { this.controls.enabled = false; };
+  #onXRStart = () => {
+    //this.controls.enabled = false;
+  };
 
-  #onXREnd = () => { this.controls.enabled = true; };
+  #onXREnd = () => {
+    //this.controls.enabled = true;
+  };
 
   #onResize = () => {
     if (this.renderer.xr.isPresenting) { return; }
@@ -62,7 +66,7 @@ export class RenderingManager {
     this.renderer.xr.removeEventListener('sessionstart', this.#onXRStart);
     this.renderer.xr.removeEventListener('sessionend', this.#onXREnd);
     window.removeEventListener('resize', this.#onResize);
-    this.controls.dispose();
+    //this.controls.dispose();
     this.renderer.dispose();
   }
 }

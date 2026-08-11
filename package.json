@@ -11,7 +11,8 @@
     "clean": "rm -rf dist",
     "purge": "npm run clean && rm -rf node_modules",
     "serve": "http-server dist",
-    "cloud": "cloudflared tunnel --url http://localhost:5173/"
+    "cloud": "cloudflared tunnel --url http://localhost:5173/",
+    "zip": "rm -f dist.zip; cd dist; zip -r ../dist.zip .; cd ..; if [ $(wc -c < dist.zip) -ge 13312 ]; then echo \"*** ERROR *** : APP BUNDLE TOO BIG !!!\"; fi; wc -c dist.zip; mv dist.zip ./build/gamma.zip"
   },
   "devDependencies": {
     "@types/three": "^0.185.0",
@@ -19,6 +20,7 @@
     "typescript": "^6.0.3",
     "vite": "^8.2.0",
     "vite-plugin-glsl": "^1.6.1",
+    "vite-plugin-singlefile": "^2.3.3",
     "vite-plugin-static-copy": "^4.1.1"
   },
   "dependencies": {
