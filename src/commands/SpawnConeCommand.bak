@@ -1,0 +1,44 @@
+import { Command } from '../core/Command';
+import { TargetManager } from '../managers/TargetManager';
+import { AudioManager } from '../audio/AudioManager';
+import {
+  Vector3,
+  Quaternion,
+  Object3D,
+  CylinderGeometry
+} from 'three';
+import type { RenderingManager } from '../managers/RenderingManager';
+
+// TODO: WIP
+
+// Spawns a cone 0.3m in front of the given transform, oriented along its -Z axis.
+// Used for XR controller/hand select and camera (desktop click).
+export class SpawnConeCommand extends Command {
+  #rendering!: RenderingManager;
+  #audio!: AudioManager;
+  #transform!: Object3D;
+
+  // TODO: ARCHI: QUESTION should Object3D management be abstracted?
+  // We should not care here if the mesh is duplicated, shared or instanced.
+  // See RenderingManager: best place to do this? Delegate to other class?
+  static #sharedGeo: CylinderGeometry = new CylinderGeometry(0, 0.05, 0.2, 32).rotateX(Math.PI / 2);
+
+  // TMP
+  #_pos: Vector3 = new Vector3();
+  #_quat: Quaternion = new Quaternion();
+
+  constructor(rendering: RenderingManager, transform: Object3D, audio: AudioManager) {
+    super();
+    this.#rendering = rendering;
+    this.#audio = audio;
+    this.#transform = transform;
+  }
+
+  execute() {
+    this.#_pos.set(0, 0, -0.3).applyMatrix4(this.#transform.matrixWorld); // TODO: handle different offset when not in MobileAR: See HandSource => Screen Source?
+    this.#_quat.setFromRotationMatrix(this.#transform.matrixWorld);
+    this.#rendering.spawnAt(SpawnConeCommand.#sharedGeo, this.#_pos, this.#_quat);
+
+    this.#audio.play('spawn');
+  }
+}

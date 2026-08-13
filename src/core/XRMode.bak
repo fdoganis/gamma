@@ -1,0 +1,7 @@
+// Enum
+export const XRMode = {
+  NONE: Symbol('none'),
+  VR: Symbol('vr'),
+  AR: Symbol('ar'),
+  MOBILE_AR: Symbol('mobile_ar')
+};

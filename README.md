@@ -129,8 +129,6 @@ This will create a `dist` folder containing the static files for the app. You ca
   
 - THREE.js WebXR code inspired by https://threejs.org/examples/webxr_ar_cones.html (MIT License)
 
-- Test model (red cube) from https://github.com/cx20/gltf-test/tree/master/sampleModels/Box (CC BY License)
-
 - Some very interesting features (emulator, github pages deployment) have been borrowed from https://github.com/meta-quest/webxr-first-steps  (MIT License)
 
   - Make sure to check this excellent tutorial out! Even if it is mostly focused on VR, it is a great introduction on how to combine WebXR with THREE.js.

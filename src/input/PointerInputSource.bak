@@ -1,0 +1,35 @@
+// TODO: WIP
+
+import { InputSource } from './InputSource';
+import { Command } from '../core/Command';
+import type { NormalizedDeviceCoordinates } from './NormalizedDeviceCoordinates';
+
+// Abstraction for touch, mouse and similar 2D sources
+// NOTE: ndc is a shared mutable object owned here.
+// Bound command holds a reference to it and reads ndc at execute() time.
+// collect() and execute() are synchronous in the same frame: always current.
+// Zero allocation per click.
+export class PointerInputSource extends InputSource {
+  private _domElement!: HTMLElement;
+  private _command: Command | undefined;
+
+  ndc: NormalizedDeviceCoordinates = { x: 0, y: 0 };   // shared reference, read by bound command
+
+  constructor(domElement: HTMLElement) {
+    super();
+    this._domElement = domElement;
+    domElement.addEventListener('pointerdown', this._onPointerDown);
+  }
+
+  bind(command: Command) { this._command = command; }
+
+  private _onPointerDown = (e: PointerEvent) => {
+    if (!this.enabled || !this._command) { return; }
+
+    this.ndc.x = (e.clientX / window.innerWidth) * 2 - 1;
+    this.ndc.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    this.queue.push(this._command);
+  }
+
+  dispose() { this._domElement.removeEventListener('pointerdown', this._onPointerDown) }
+}

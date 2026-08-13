@@ -1,0 +1,52 @@
+import { InputSource } from './InputSource';
+import { Command } from '../core/Command';
+
+// Must be polled : browser fires no press events, only connect/disconnect
+// XR controller hardware buttons also surface here as indices 0 (left) / 1 (right)
+
+type GamepadData = { buttonIndex: number, command: Command, gamepadIndex: number }; // -1 == undefined; in XR: left 0, right: 1
+
+export class GamepadInputSource extends InputSource {
+  _connected: Map<number, Array<boolean>> = new Map();   // index -> prev button states []
+  _bindings: GamepadData[] = [];         // { gamepadIndex, buttonIndex, command }
+
+  constructor() {
+    super()
+    window.addEventListener('gamepadconnected', this._onConnected)
+    window.addEventListener('gamepaddisconnected', this._onDisconnected)
+  }
+
+  bind(gamepadIndex: number, buttonIndex: number, command: Command) {
+    this._bindings.push({ buttonIndex: buttonIndex, command: command, gamepadIndex: gamepadIndex });
+  }
+
+  _onConnected = (e: GamepadEvent) => { this._connected.set(e.gamepad.index, []); }
+
+  _onDisconnected = (e: GamepadEvent) => { this._connected.delete(e.gamepad.index); }
+
+  poll() {
+    if (!this.enabled) { return; }
+
+    for (const gp of navigator.getGamepads()) {
+      if (!gp || !this._connected.has(gp.index)) { continue; }
+
+      const prev = this._connected.get(gp.index); // get previous button states for button
+      if (!prev) { continue; }
+
+      for (const { gamepadIndex, buttonIndex, command } of this._bindings) {
+        if (gamepadIndex !== -1 && gamepadIndex !== gp.index) { continue; }
+
+        const pressed = gp.buttons[buttonIndex]?.pressed || false;
+        if (pressed && !prev[buttonIndex]) {
+          this.queue.push(command);
+        }
+        prev[buttonIndex] = pressed;
+      }
+    }
+  }
+
+  dispose() {
+    window.removeEventListener('gamepadconnected', this._onConnected)
+    window.removeEventListener('gamepaddisconnected', this._onDisconnected)
+  }
+}

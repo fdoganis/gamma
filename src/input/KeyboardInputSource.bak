@@ -1,0 +1,33 @@
+import { InputSource } from './InputSource'
+import { Command } from '../core/Command'
+export class KeyboardInputSource extends InputSource {
+
+  _bindings: Map<string, Command> = new Map();
+
+
+  constructor() {
+    super()
+
+    window.addEventListener('keydown', this._onKeyDown)
+  }
+
+
+  bind(code: string /** @type KeyboardEvent.code */, command: Command) {
+    this._bindings.set(code, command);
+  }
+
+
+  _onKeyDown = (e: KeyboardEvent) => {
+    if (!this.enabled || e.repeat) { return; }
+
+    const cmd = this._bindings.get(e.code);
+    if (cmd) {
+      this.queue.push(cmd);
+    }
+  }
+
+
+  dispose() {
+    window.removeEventListener('keydown', this._onKeyDown);
+  }
+}

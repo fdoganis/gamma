@@ -1,0 +1,4 @@
+export interface NormalizedDeviceCoordinates {
+  x: number;
+  y: number;
+}
