@@ -31,7 +31,7 @@ export class PointerInputSource extends InputSource {
     renderer.domElement.addEventListener('pointerdown', this.#onPointerDown);
   }
 
-  #onPointerDown = (e: PointerEvent): void => {
+  #onPointerDown = (e: PointerEvent) => {
     if (!this.enabled || this.#renderer.xr.isPresenting) return;
     const rect = this.#renderer.domElement.getBoundingClientRect();
     this.#ndc.set(
@@ -44,7 +44,7 @@ export class PointerInputSource extends InputSource {
     this.queue.push(new SelectCommand({ matrixWorld }));
   };
 
-  override dispose(): void {
+  override dispose() {
     this.#renderer.domElement.removeEventListener('pointerdown', this.#onPointerDown);
   }
 }

@@ -46,7 +46,7 @@ export class World {
     material.color.getHSL(hsl);
     const axis = new Vector3(
       Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1
-    ).normalize(); // "arbitrary" — a fresh random axis per cone, fixed once chosen
+    ).normalize(); // "arbitrary", a fresh random axis per cone, fixed once chosen
     const speed = MathUtils.lerp(MIN_SPIN, MAX_SPIN, hsl.h);
 
     this.#em.create({ mesh, material, axis, speed });
