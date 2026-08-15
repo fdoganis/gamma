@@ -10,62 +10,31 @@ import {
   PerspectiveCamera
 } from 'three';
 
+import type { Vector3 } from 'three';
+
+// audio/AudioManager.ts
+import type { SoundEngine } from './SoundEngine';
+
+// Owns only what's engine-agnostic: mute state. 
+// How a sound is actually produced (e.g. zzfx, an oscillator, loaded samples, a tracker player) 
+// is delegated to SoundEngine 
 export class AudioManager {
-  #listener: AudioListener;
-  #clips: Record<string, Audio> = {};
+  #engine: SoundEngine;
   #muted: boolean = false;
 
-  constructor(camera: PerspectiveCamera) {
-    this.#listener = new AudioListener();
-    camera.add(this.#listener);
+  constructor(engine: SoundEngine) {
+    this.#engine = engine;
   }
 
-  load(id: string, url: string, loop = false, volume = 1) {
-    const sound = new Audio(this.#listener);
-    new AudioLoader().load(url, (buffer: AudioBuffer) => {
-      sound.setBuffer(buffer);
-      sound.setLoop(loop);
-      sound.setVolume(volume);
-    });
-    this.#clips[id] = sound;
-  }
-
-  play(id: string) {
-    const s = this.#clips[id];
-    if (!this.#muted && s && !s.isPlaying) s.play();
-  }
-
-  // No assets needed
-  // TODO: add zzFx, SoundBox / pl_synth support
-  // TODO: don't create nodes on the fly! Store them. This should actually be a sub-class
-  tone(frequency = 440, duration = 0.15, type: OscillatorType = 'sine') {
-    if (this.#muted) return;
-    const ctx = this.#listener.context;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = type;
-    osc.frequency.value = frequency;
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
-    osc.connect(gain).connect(this.#listener.getInput());
-    osc.start();
-    osc.stop(ctx.currentTime + duration);
+  play(id: string, position?: Vector3): void {
+    if (!this.#muted) this.#engine.play(id, position);
   }
 
   toggle() { this.#muted ? this.activate() : this.deactivate(); }
 
-  activate() {
-    this.#muted = false;
-    if (this.#listener.context.state === 'suspended') this.#listener.context.resume();
-  }
+  activate() { this.#muted = false; this.#engine.activate?.(); }
 
-  deactivate() {
-    this.#muted = true;
-    for (const id in this.#clips) {
-      const s = this.#clips[id];
-      if (s.isPlaying) s.stop();
-    }
-  }
+  deactivate() { this.#muted = true; }
 
-  dispose() { this.deactivate(); this.#listener.removeFromParent(); }
+  dispose() { this.#engine.dispose?.(); }
 }

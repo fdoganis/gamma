@@ -1,34 +1,41 @@
 import type { Command } from '../core/Command';
-import { InputSource } from './InputSource';
+import type { InputSource } from './InputSource';
 
 export class InputProcessor {
+  #sources: InputSource[] = [];
+  #next: Command[] = []; // filled this cycle, becomes 'commands' next cycle
+  commands: Command[] = []; // dispatched this cycle, filled last cycle
 
-  #sources: InputSource[] = []
-  commands: Command[] = []
+  add(source: InputSource) { this.#sources.push(source); }
 
-  add(source: InputSource) {
-    this.#sources.push(source);
-    return source;
+  remove(source: InputSource) {
+    const i = this.#sources.indexOf(source);
+    if (i !== -1) this.#sources.splice(i, 1);
   }
 
 
+  // collect() {
+  //   this.commands.length = 0;
+  //   for (const src of this.#sources) {
+  //     src.poll();
+
+  //     for (const cmd of src.queue) {
+  //       this.commands.push(cmd);
+  //     }
+
+  //     src.queue.length = 0;
+  //   }
+  // }
   collect() {
-    this.commands.length = 0;
+    // Swap then gather: 'commands' becomes whatever was gathered last cycle
+    [this.commands, this.#next] = [this.#next, this.commands];
+    this.#next.length = 0;
     for (const src of this.#sources) {
       src.poll();
-
-      for (const cmd of src.queue) {
-        this.commands.push(cmd);
-      }
-
+      for (const cmd of src.queue) this.#next.push(cmd);
       src.queue.length = 0;
     }
   }
 
-
-  dispose() {
-    for (const src of this.#sources) {
-      src.dispose();
-    }
-  }
+  dispose() { for (const src of this.#sources) src.dispose(); }
 }
