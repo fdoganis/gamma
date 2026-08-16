@@ -30,15 +30,18 @@ export class Game {
   constructor() {
     this.#render = new RenderingManager();
     this.#world = new World(this.#render.scene);
-    this.#audio = new AudioManager(new OscillatorSoundEngine()); // or: new ZzfxSoundEngine() // TODO: QUESTION:  FIXME: no mpore spatial audio where is the camera parameter
-    this.#input = new InputManager(this.#render.renderer, this.#render.scene, this.#render.camera);
-    this.#sm = this.#buildStateMachine();
+    this.#audio = new AudioManager(this.#render.camera, new OscillatorSoundEngine()); // or: new ZzfxSoundEngine() 
     this.#sparkles = new Sparkles(this.#render.scene);
     this.#haptics = new Haptics(this.#render.renderer);
+    this.#input = new InputManager(this.#render.renderer, this.#render.scene, this.#render.camera);
+    this.#sm = this.#buildStateMachine();
+
 
     this.#bindInput();
   }
 
+  // GameIntroState / GameOverState 
+  // NOTE: Starting in Intro means the first tap changes state instead of spawning a cone.
   #buildStateMachine(): StateMachine {
     const sm = new StateMachine();
     sm.register(GameIntroState, new GameIntroState(sm));
@@ -76,12 +79,14 @@ export class Game {
     this.#render.renderer.setAnimationLoop(null);
     this.#input.dispose();
     this.#world.dispose();
+    this.#sparkles.dispose();
     this.#audio.dispose();
     this.#render.dispose();
-    this.#sparkles.dispose();
+
   }
 
   start() {
     this.#render.renderer.setAnimationLoop(new GameLoop(this).tick);
   }
 }
+

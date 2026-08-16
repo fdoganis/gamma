@@ -20,6 +20,8 @@ export class RenderingManager {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.xr.enabled = true;
     document.body.appendChild(this.renderer.domElement);
+    // TODO: CHECK if the following line is important, and if it should rather be written in HTML / CSS
+    //this.renderer.domElement.style.touchAction = 'none'; // stop the browser's own pinch/scroll competing with taps
 
     const btn = XRButton.createButton(this.renderer, {});
     btn.style.backgroundColor = 'skyblue';

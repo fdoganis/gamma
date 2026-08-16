@@ -1,5 +1,4 @@
-// states/GameRunningState.ts — haptics field dropped, fires at bind time now
-// TODO: FIXME: CHECK
+
 import { State } from '../core/State';
 import { SelectCommand } from '../commands/SelectCommand';
 import type { World } from '../world/World';
@@ -26,21 +25,18 @@ export class GameRunningState extends State {
     this.on(SelectCommand, this.#onSelect);
   }
 
-  // Every effect lives here, one line each, all driven by cmd — nothing
-  // upstream needed to know haptics was even a thing.
   #onSelect = (cmd: SelectCommand) => {
-    const { position, color } = this.#world.spawn(cmd.transform);
-    this.#audio.play('spawn', position);
-    this.#sparkles?.burst(position, color);
-    this.#haptics?.pulse(cmd.handedness);
+    const { mesh, color } = this.#world.spawn(cmd.transform);
+    this.#audio.playSFX('spawn', mesh); // positional
+    this.#sparkles.burst(mesh.position, color);
+    this.#haptics.pulse(cmd.handedness);
   };
 
   override update(delta: number) {
     this.#world.update(delta);
-    this.#sparkles?.update(delta);
+    this.#sparkles.update(delta);
   }
 
   override enter() { this.#audio.activate(); }
-
   override exit() { this.#audio.deactivate(); }
 }

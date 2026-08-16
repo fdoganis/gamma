@@ -33,7 +33,7 @@ export class World {
     this.#geo.rotateX(Math.PI / 2);
   }
 
-  spawn(transform: ITransform): { position: Vector3; color: Color } {
+  spawn(transform: ITransform): { mesh: Mesh; color: Color } {
     this.#pos.set(0, 0, -0.3).applyMatrix4(transform.matrixWorld);
     this.#quat.setFromRotationMatrix(transform.matrixWorld);
     const material = new MeshPhongMaterial({ color: Math.random() * 0xffffff });
@@ -50,7 +50,7 @@ export class World {
     const speed = MathUtils.lerp(MIN_SPIN, MAX_SPIN, hsl.h);
 
     this.#em.create({ mesh, material, axis, speed });
-    return { position: mesh.position, color: material.color };
+    return { mesh: mesh, color: material.color };
   }
 
   update(delta: number): void {

@@ -1,5 +1,6 @@
 {
     "compilerOptions": {
+        "allowJs": true,
         "erasableSyntaxOnly": true,
         "verbatimModuleSyntax": true,
         "isolatedModules": true,
@@ -21,7 +22,7 @@
     },
     "include": [
         "**/*.ts",
-        "vite.config.js"
+        "../vite.config.js"
     ],
     "exclude": [
         "node_modules"

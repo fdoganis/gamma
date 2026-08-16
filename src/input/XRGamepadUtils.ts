@@ -13,7 +13,7 @@ export function findXRGamepad(renderer: WebGLRenderer, handedness: XRHandedness)
   return null;
 }
 
-// TODO: mARCHI: QUESTION: Move Haptics elsewhere?
+// TODO: ARCHI: QUESTION: Move Haptics elsewhere?
 export class Haptics {
   #renderer: WebGLRenderer;
 
@@ -21,7 +21,9 @@ export class Haptics {
     this.#renderer = renderer;
   }
 
-  pulse(handedness: XRHandedness, intensity = 0.5, durationMs = 80) {
-    findXRGamepad(this.#renderer, handedness)?.hapticActuators?.[0]?.pulse(intensity, durationMs);
+  pulse(handedness: XRHandedness, intensity = 0.5, durationMs = 80): void {
+    const actuator = findXRGamepad(this.#renderer, handedness)?.hapticActuators?.[0];
+    if (actuator) { actuator.pulse(intensity, durationMs); return; }
+    navigator.vibrate?.(durationMs); // Android only — iOS Safari has never implemented the Vibration API
   }
 }

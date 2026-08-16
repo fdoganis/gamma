@@ -1,7 +1,10 @@
-import type { Vector3 } from 'three';
+export type SoundHandle = {
+  source: AudioScheduledSourceNode; // call .start() on this
+  output: AudioNode;                // connect this to wherever the sound should go
+};
 
 export interface SoundEngine {
-  play(id: string, position?: Vector3): void;
-  activate?(): void; // resume a suspended AudioContext, browsers require a user gesture first
+  createSource(id: string, context: AudioContext): SoundHandle | null;
+  activate?(): void;
   dispose?(): void;
 }
