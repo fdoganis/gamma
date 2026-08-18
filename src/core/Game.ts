@@ -45,8 +45,7 @@ export class Game {
   #buildStateMachine(): StateMachine {
     const sm = new StateMachine();
     sm.register(GameIntroState, new GameIntroState(sm));
-    sm.register(GameRunningState, new GameRunningState(this.#world, this.#audio, this.#sparkles, this.#haptics)
-    );
+    sm.register(GameRunningState, new GameRunningState(this.#world, this.#audio, this.#haptics));
     sm.register(GameOverState, new GameOverState(sm));
     sm.start(GameIntroState);
     return sm;
@@ -79,7 +78,6 @@ export class Game {
     this.#render.renderer.setAnimationLoop(null);
     this.#input.dispose();
     this.#world.dispose();
-    this.#sparkles.dispose();
     this.#audio.dispose();
     this.#render.dispose();
 

@@ -10,8 +10,12 @@ import {
   MathUtils
 } from 'three';
 
+
 import type { ITransform } from '../types/ITransform';
 import { EntityManager } from './EntityManager';
+
+import { Sparkles } from '../animation/Sparkles';
+import type { BurstMode } from '../animation/Sparkles';
 
 type Cone = { mesh: Mesh; material: MeshPhongMaterial; axis: Vector3; speed: number };
 
@@ -22,24 +26,31 @@ const MAX_SPIN = Math.PI * 2;
 
 export class World {
   #em: EntityManager<Cone> = new EntityManager<Cone>();
+  #sparkles: Sparkles;
   #scene: Scene;
+
+  // CONST
   #geo: CylinderGeometry;
-  #pos: Vector3 = new Vector3();
-  #quat: Quaternion = new Quaternion();
+
+  // TMP
+  #_pos: Vector3 = new Vector3();
+  #_quat: Quaternion = new Quaternion();
 
   constructor(scene: Scene) {
     this.#scene = scene;
+    this.#sparkles = new Sparkles(this.#scene);
+
     this.#geo = new CylinderGeometry(0, 0.05, 0.2, 32);
     this.#geo.rotateX(Math.PI / 2);
   }
 
   spawn(transform: ITransform): { mesh: Mesh; color: Color } {
-    this.#pos.set(0, 0, -0.3).applyMatrix4(transform.matrixWorld);
-    this.#quat.setFromRotationMatrix(transform.matrixWorld);
+    this.#_pos.set(0, 0, -0.3).applyMatrix4(transform.matrixWorld);
+    this.#_quat.setFromRotationMatrix(transform.matrixWorld);
     const material = new MeshPhongMaterial({ color: Math.random() * 0xffffff });
     const mesh = new Mesh(this.#geo, material);
-    mesh.position.copy(this.#pos);
-    mesh.quaternion.copy(this.#quat);
+    mesh.position.copy(this.#_pos);
+    mesh.quaternion.copy(this.#_quat);
     this.#scene.add(mesh);
 
     const hsl = { h: 0, s: 0, l: 0 };
@@ -53,11 +64,19 @@ export class World {
     return { mesh: mesh, color: material.color };
   }
 
+  burstSparkles(origin: Vector3, color: Color, mode?: BurstMode): void {
+    this.#sparkles.burst(origin, color, mode);
+  }
+
+
   update(delta: number): void {
     // Velocity, not a tween, no easing involved, just angle += speed * delta.
     this.#em.forEach(({ mesh, axis, speed }) => {
       mesh.rotateOnAxis(axis, speed * delta);
     });
+
+    this.#sparkles.update(delta);
+
   }
 
   dispose(): void {
@@ -65,7 +84,9 @@ export class World {
       this.#scene.remove(mesh);
       material.dispose();
     });
+
     this.#em.clear();
     this.#geo.dispose();
+    this.#sparkles.dispose();
   }
 }
