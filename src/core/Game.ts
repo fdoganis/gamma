@@ -1,7 +1,7 @@
 // Game.ts
 import { GameLoop } from './GameLoop';
 import { StateMachine } from './StateMachine';
-import { RenderingManager } from '../managers/RenderingManager';
+import { RenderingManager } from '../rendering/RenderingManager';
 import { InputManager } from '../input/InputManager';
 import { AudioManager } from '../audio/AudioManager';
 

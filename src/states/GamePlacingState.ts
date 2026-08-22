@@ -1,7 +1,7 @@
 import { Mesh, MeshBasicMaterial, RingGeometry } from 'three';
 import { State } from '../core/State';
 import type { ITransition } from '../core/StateMachine';
-import type { RenderingManager } from '../managers/RenderingManager';
+import type { RenderingManager } from '../rendering/RenderingManager';
 import { SelectCommand } from '../commands/SelectCommand';
 import { GameRunningState } from './GameRunningState';
 
