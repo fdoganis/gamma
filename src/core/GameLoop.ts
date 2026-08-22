@@ -17,13 +17,13 @@ export class GameLoop {
 
   }
 
-  tick = () => {
+  tick = (_timestamp: number, frame?: XRFrame) => {
     this.#timer.update();
     this.#elapsed += this.#timer.getDelta();
     this.#game.processInput();
 
     while (this.#elapsed > FRAME_s) {
-      this.#game.update(FRAME_s);
+      this.#game.update(FRAME_s, frame);
       this.#elapsed -= FRAME_s;
     }
 

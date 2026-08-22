@@ -37,5 +37,5 @@ export class StateMachine {
   dispatch(cmd: Command) { this.#current?.handle(cmd); }
 
   // advances time-based logic in the current state : GPP's update()
-  update(delta: number) { this.#current?.update(delta); }
+  update(delta: number, frame?: XRFrame) { this.#current?.update(delta, frame); }
 }

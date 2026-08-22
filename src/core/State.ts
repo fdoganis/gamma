@@ -23,7 +23,7 @@ export abstract class State {
 
   enter() { }
 
-  update(_delta: number) { }
+  update(_delta: number, _frame?: XRFrame) { }
 
   exit() { }
 }

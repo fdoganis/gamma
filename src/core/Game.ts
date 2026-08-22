@@ -70,7 +70,7 @@ export class Game {
     for (const cmd of this.#input.commands) this.#sm.dispatch(cmd);
   }
 
-  update(delta: number) { this.#sm.update(delta); }
+  update(delta: number, frame?: XRFrame) { this.#sm.update(delta, frame); }
 
   render() { this.#render.render(); }
 
