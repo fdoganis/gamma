@@ -25,7 +25,10 @@ export class RenderingManager {
     // TODO: CHECK if the following line is important, and if it should rather be written in HTML / CSS
     //this.renderer.domElement.style.touchAction = 'none'; // stop the browser's own pinch/scroll competing with taps
 
-    const btn = XRButton.createButton(this.renderer, { requiredFeatures: ['hit-test'] });
+    const btn = XRButton.createButton(this.renderer, {
+      requiredFeatures: ['hit-test'],
+      optionalFeatures: ['hand-tracking']
+    });
     btn.style.backgroundColor = 'skyblue';
     document.body.appendChild(btn);
 
