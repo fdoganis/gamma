@@ -15,6 +15,7 @@ import { GameOverState } from '../states/GameOverState';
 //import { pulseXRController } from '../input/XRGamepadUtils';
 import { randomTransform } from '../core/Utils';
 import { Haptics } from '../input/XRGamepadUtils';
+import { GamePlacingState } from '../states/GamePlacingState';
 
 export class Game {
   #render: RenderingManager;
@@ -42,6 +43,7 @@ export class Game {
   #buildStateMachine(): StateMachine {
     const sm = new StateMachine();
     sm.register(GameIntroState, new GameIntroState(sm));
+    sm.register(GamePlacingState, new GamePlacingState(this.#render, sm));
     sm.register(GameRunningState, new GameRunningState(this.#world, this.#audio, this.#haptics, sm));
     sm.register(GameOverState, new GameOverState(sm));
     sm.start(GameIntroState);

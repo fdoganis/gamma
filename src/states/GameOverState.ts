@@ -2,9 +2,11 @@ import { State } from '../core/State';
 import type { ITransition } from '../core/StateMachine';
 import { SelectCommand } from '../commands/SelectCommand';
 import { GameIntroState } from './GameIntroState';
+import { createOverlay } from '../core/Utils';
 
 export class GameOverState extends State {
   #sm: ITransition;
+  #message = createOverlay('Game over - tap to restart');
 
   constructor(sm: ITransition) {
     super();
@@ -18,7 +20,7 @@ export class GameOverState extends State {
 
   #onSelect = () => { this.#sm.change(GameIntroState); };
 
-  override enter() { /* show game over UI */ }
+  override enter() { this.#message.style.display = 'grid'; }
 
-  override exit() { /* hide game over UI */ }
+  override exit() { this.#message.style.display = 'none'; }
 }

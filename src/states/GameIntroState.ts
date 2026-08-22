@@ -1,10 +1,12 @@
 import { State } from '../core/State';
 import type { ITransition } from '../core/StateMachine';
 import { SelectCommand } from '../commands/SelectCommand';
-import { GameRunningState } from './GameRunningState';
+import { GamePlacingState } from './GamePlacingState';
+import { createOverlay } from '../core/Utils';
 
 export class GameIntroState extends State {
   #sm: ITransition;
+  #message = createOverlay('Tap to start');
 
   constructor(sm: ITransition) {
     super();
@@ -19,10 +21,11 @@ export class GameIntroState extends State {
   }
 
   #onSelect = () => {
-    this.#sm.change(GameRunningState);
+    this.#sm.change(GamePlacingState);
   };
 
-  override enter() { /* show intro UI */ }
+  override enter() { this.#message.style.display = 'grid'; }
 
-  override exit() { /* hide intro UI */ }
+  override exit() { this.#message.style.display = 'none'; }
+
 }

@@ -43,3 +43,12 @@ export function randomTransform(): ITransform {
   const quat = new Quaternion().setFromAxisAngle(UP, Math.random() * Math.PI * 2);
   return { matrixWorld: new Matrix4().compose(pos, quat, SCALE) };
 }
+
+// TODO: FIXME: replqce with 3D text
+export function createOverlay(text: string): HTMLElement {
+  const el = document.createElement('div');
+  el.textContent = text;
+  el.style.cssText = 'position:fixed;inset:0;display:none;place-items:center;font:2rem sans-serif;color:#fff;background:#000a;';
+  document.body.appendChild(el);
+  return el;
+}
