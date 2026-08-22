@@ -3,7 +3,8 @@ import {
   Scene,
   PerspectiveCamera,
   AmbientLight,
-  HemisphereLight
+  HemisphereLight,
+  Group
 } from 'three';
 //import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { XRButton } from 'three/addons/webxr/XRButton.js';
@@ -12,6 +13,7 @@ export class RenderingManager {
   scene: Scene;
   camera: PerspectiveCamera;
   renderer: WebGLRenderer;
+  anchor: Group; // extra node useful for XR placement
   //controls: OrbitControls;
 
   constructor() {
@@ -23,11 +25,13 @@ export class RenderingManager {
     // TODO: CHECK if the following line is important, and if it should rather be written in HTML / CSS
     //this.renderer.domElement.style.touchAction = 'none'; // stop the browser's own pinch/scroll competing with taps
 
-    const btn = XRButton.createButton(this.renderer, {});
+    const btn = XRButton.createButton(this.renderer, { requiredFeatures: ['hit-test'] });
     btn.style.backgroundColor = 'skyblue';
     document.body.appendChild(btn);
 
     this.scene = new Scene();
+    this.anchor = new Group();
+    this.scene.add(this.anchor);
     this.camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10);
     this.camera.position.set(0, 1.6, 3);
 

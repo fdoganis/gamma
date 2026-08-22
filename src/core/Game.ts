@@ -27,7 +27,7 @@ export class Game {
 
   constructor() {
     this.#render = new RenderingManager();
-    this.#world = new World(this.#render.scene);
+    this.#world = new World(this.#render.anchor);
     this.#audio = new AudioManager(this.#render.camera, new OscillatorSoundEngine()); // or: new ZzfxSoundEngine() 
     this.#haptics = new Haptics(this.#render.renderer);
     this.#input = new InputManager(this.#render.renderer, this.#render.scene, this.#render.camera);

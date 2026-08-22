@@ -5,11 +5,11 @@ import {
   CylinderGeometry,
   Vector3,
   Quaternion,
-  Scene,
   Color,
   MathUtils
 } from 'three';
 
+import type { Object3D } from 'three';
 
 import type { ITransform } from '../types/ITransform';
 import { EntityManager } from './EntityManager';
@@ -27,7 +27,7 @@ const MAX_SPIN = Math.PI * 2;
 export class World {
   #em: EntityManager<Cone> = new EntityManager<Cone>();
   #sparkles: Sparkles;
-  #scene: Scene;
+  #root: Object3D;
 
   // CONST
   #geo: CylinderGeometry;
@@ -36,9 +36,9 @@ export class World {
   #_pos: Vector3 = new Vector3();
   #_quat: Quaternion = new Quaternion();
 
-  constructor(scene: Scene) {
-    this.#scene = scene;
-    this.#sparkles = new Sparkles(this.#scene);
+  constructor(root: Object3D) {
+    this.#root = root;
+    this.#sparkles = new Sparkles(this.#root);
 
     this.#geo = new CylinderGeometry(0, 0.05, 0.2, 32);
     this.#geo.rotateX(Math.PI / 2);
@@ -51,7 +51,7 @@ export class World {
     const mesh = new Mesh(this.#geo, material);
     mesh.position.copy(this.#_pos);
     mesh.quaternion.copy(this.#_quat);
-    this.#scene.add(mesh);
+    this.#root.add(mesh);
 
     const hsl = { h: 0, s: 0, l: 0 };
     material.color.getHSL(hsl);
@@ -81,7 +81,7 @@ export class World {
 
   dispose(): void {
     this.#em.forEach(({ mesh, material }) => {
-      this.#scene.remove(mesh);
+      this.#root.remove(mesh);
       material.dispose();
     });
 

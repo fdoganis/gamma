@@ -1,5 +1,5 @@
 import { Mesh, MeshBasicMaterial, BoxGeometry, Vector3, MathUtils } from 'three';
-import type { Scene, Color } from 'three';
+import type { Object3D, Color } from 'three';
 import { easeOutQuint, easeOutBack } from './Easing';
 import type { Ease } from './Easing';
 
@@ -32,13 +32,13 @@ type ParticleGroup = {
 };
 
 export class Sparkles {
-  #scene: Scene;
+  #parent: Object3D;
   #groups: ParticleGroup[];
 
   // TODO: can we avoid the new Vector3s here?
 
-  constructor(scene: Scene) {
-    this.#scene = scene;
+  constructor(parent: Object3D) {
+    this.#parent = parent;
     this.#groups = [
       this.#createGroup(20, 0xffffff, 0.03, easeOutQuint, true),  // matches the cone's colour
       this.#createGroup(15, 0xffe9a8, 0.015, easeOutQuint, false), // fixed warm glint
@@ -51,7 +51,7 @@ export class Sparkles {
     for (let i = 0; i < count; i++) {
       const mesh = new Mesh(GEOMETRY, material);
       mesh.scale.setScalar(0);
-      this.#scene.add(mesh);
+      this.#parent.add(mesh);
       particles.push({
         mesh, active: false, elapsed: 0, duration: 0.5,
         from: new Vector3(), to: new Vector3(), fromScale: 0, toScale: 0,
@@ -114,7 +114,7 @@ export class Sparkles {
   dispose() {
     for (const group of this.#groups) {
       for (const p of group.particles) {
-        this.#scene.remove(p.mesh);
+        this.#parent.remove(p.mesh);
       }
 
       group.material.dispose();
