@@ -4,17 +4,24 @@ import { SelectCommand } from '../commands/SelectCommand';
 import type { World } from '../world/World';
 import type { AudioManager } from '../audio/AudioManager';
 import type { Haptics } from '../input/XRGamepadUtils';
+import type { ITransition } from '../core/StateMachine';
+import { GameOverState } from './GameOverState';
+
+const ROUND_SECONDS = 45;
 
 export class GameRunningState extends State {
   #world: World;
   #audio: AudioManager;
   #haptics: Haptics;
+  #transition: ITransition;
+  #timeLeft = ROUND_SECONDS;
 
-  constructor(world: World, audio: AudioManager, haptics: Haptics) {
+  constructor(world: World, audio: AudioManager, haptics: Haptics, transition: ITransition) {
     super();
     this.#world = world;
     this.#audio = audio;
     this.#haptics = haptics;
+    this.#transition = transition;
     this.#registerHandlers();
   }
 
@@ -31,8 +38,18 @@ export class GameRunningState extends State {
 
   override update(delta: number) {
     this.#world.update(delta);
+
+    this.#timeLeft -= delta;
+    if (this.#timeLeft <= 0) {
+      this.#transition.change(GameOverState);
+    }
   }
 
-  override enter() { this.#audio.activate(); }
-  override exit() { this.#audio.deactivate(); }
+  override enter() {
+    this.#timeLeft = ROUND_SECONDS;
+    this.#audio.activate();
+  }
+  override exit() {
+    this.#audio.deactivate();
+  }
 }
