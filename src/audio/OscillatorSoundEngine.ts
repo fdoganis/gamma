@@ -15,7 +15,7 @@ export class OscillatorSoundEngine implements SoundEngine {
     gain.gain.setValueAtTime(0.3, context.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + tone.duration);
     osc.connect(gain);
-    osc.start(); // TODO: ARCHI: QUESTION: see AudioManager
+    osc.start();
     osc.stop(context.currentTime + tone.duration);
     return { source: osc, output: gain };
   }

@@ -21,6 +21,7 @@ export class SoundBoxSoundEngine implements SoundEngine {
     }
     const source = context.createBufferSource();
     source.buffer = buffer as AudioBuffer; // TODO: FIME: CHECK: add proper .d.ts
+    source.start();
     return { source, output: source };
   }
 }

@@ -1,5 +1,5 @@
 export type SoundHandle = {
-  source: AudioScheduledSourceNode; // call .start() on this
+  source: AudioScheduledSourceNode; // already started, source is useful for end  cleanup
   output: AudioNode;                // connect this to wherever the sound should go
 };
 

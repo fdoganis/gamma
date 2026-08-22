@@ -35,7 +35,6 @@ export class AudioManager {
   // so it tracks that object and detaches itself once playback ends.
   // see THREE examples 
   playSFX(id: string, source?: Object3D): void {
-    if (this.#muted) { return; }
 
     const handle = this.#engine.createSource(id, this.context);
     if (!handle) { return; }
@@ -44,7 +43,10 @@ export class AudioManager {
       const audio = new PositionalAudio(this.#listener);
       audio.setNodeSource(handle.output);
       source.add(audio);
-      handle.source.onended = () => source.remove(audio);
+      handle.source.onended = () => {
+        source.remove(audio);
+        audio.disconnect();
+      };
     } else {
       handle.output.connect(this.#listener.getInput());
     }
@@ -68,11 +70,15 @@ export class AudioManager {
 
   activate() {
     this.#muted = false;
+    this.#listener.setMasterVolume(1);
     if (this.context.state === 'suspended') this.context.resume();
     this.#engine.activate?.();
   }
 
-  deactivate() { this.#muted = true; }
+  deactivate() {
+    this.#muted = true;
+    this.#listener.setMasterVolume(0);
+  }
 
   dispose() {
     this.#bgm?.source.stop();

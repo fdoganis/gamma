@@ -10,14 +10,21 @@ const SOUNDS: Record<string, (number | undefined)[]> = {
 };
 
 export class ZzfxSoundEngine implements SoundEngine {
+  #buffers = new Map<string, AudioBuffer>();
+
   createSource(id: string, context: AudioContext): SoundHandle | null {
     const params = SOUNDS[id];
     if (!params) return null;
-    const samples = zzfxG(...params);
-    const buffer = context.createBuffer(1, samples.length, 44100);
-    buffer.copyToChannel(samples as Float32Array<ArrayBuffer>, 0); // TODO: FIXME: CHECK: .d.ts
+    let buffer = this.#buffers.get(id);
+    if (!buffer) {
+      const samples = zzfxG(...params);
+      buffer = context.createBuffer(1, samples.length, 44100);
+      buffer.copyToChannel(samples as Float32Array<ArrayBuffer>, 0);
+      this.#buffers.set(id, buffer);
+    }
     const source = context.createBufferSource();
     source.buffer = buffer;
+    source.start();
     return { source, output: source }; // zzfx already baked its own envelope
   }
 }
