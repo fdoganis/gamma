@@ -1,11 +1,11 @@
-import type { SoundEngine, SoundHandle } from './SoundEngine';
+import type { ISoundEngine, SoundHandle } from './ISoundEngine';
 
 const TONES: Record<string, { frequency: number; duration: number }> = {
   spawn: { frequency: 440, duration: 0.15 },
 };
 
 
-export class OscillatorSoundEngine implements SoundEngine {
+export class OscillatorSoundEngine implements ISoundEngine {
   createSource(id: string, context: AudioContext): SoundHandle | null {
     const tone = TONES[id];
     if (!tone) return null;

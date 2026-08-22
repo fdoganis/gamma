@@ -3,7 +3,7 @@ export type SoundHandle = {
   output: AudioNode;                // connect this to wherever the sound should go
 };
 
-export interface SoundEngine {
+export interface ISoundEngine {
   createSource(id: string, context: AudioContext): SoundHandle | null;
   activate?(): void;
   dispose?(): void;

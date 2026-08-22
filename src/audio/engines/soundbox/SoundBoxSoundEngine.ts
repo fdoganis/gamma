@@ -1,11 +1,11 @@
 // TODO: ARCHI: WIP
 
 import CPlayer from './player-small';
-import type { SoundEngine, SoundHandle } from '../../SoundEngine';
+import type { ISoundEngine, SoundHandle } from '../../ISoundEngine';
 
 const SONGS: Record<string, object> = { spawn: { /* one-instrument, one-note song object */ } };
 
-export class SoundBoxSoundEngine implements SoundEngine {
+export class SoundBoxSoundEngine implements ISoundEngine {
   #buffers = new Map<string, AudioBuffer>();
 
   createSource(id: string, context: AudioContext): SoundHandle | null {

@@ -10,7 +10,7 @@
 // audio/AudioManager.ts
 import { AudioListener, PositionalAudio } from 'three';
 import type { Object3D, PerspectiveCamera } from 'three';
-import type { SoundEngine, SoundHandle } from './SoundEngine';
+import type { ISoundEngine, SoundHandle } from './ISoundEngine';
 
 // Owns the shared AudioContext (via its own AudioListener, on the camera)
 // and mute state. 
@@ -18,11 +18,11 @@ import type { SoundEngine, SoundHandle } from './SoundEngine';
 // engine produced the waveform
 export class AudioManager {
   #listener: AudioListener;
-  #engine: SoundEngine;
+  #engine: ISoundEngine;
   #muted: boolean = false;
   #bgm: SoundHandle | null = null;
 
-  constructor(camera: PerspectiveCamera, engine: SoundEngine) {
+  constructor(camera: PerspectiveCamera, engine: ISoundEngine) {
     this.#listener = new AudioListener();
     camera.add(this.#listener);
     this.#engine = engine;
