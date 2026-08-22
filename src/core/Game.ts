@@ -45,7 +45,7 @@ export class Game {
   #buildStateMachine(): StateMachine {
     const sm = new StateMachine();
     sm.register(GameIntroState, new GameIntroState(sm));
-    sm.register(GameRunningState, new GameRunningState(this.#world, this.#audio, this.#haptics));
+    sm.register(GameRunningState, new GameRunningState(this.#world, this.#audio, this.#haptics, sm));
     sm.register(GameOverState, new GameOverState(sm));
     sm.start(GameIntroState);
     return sm;
