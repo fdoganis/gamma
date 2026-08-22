@@ -14,7 +14,6 @@ import { GameRunningState } from '../states/GameRunningState';
 import { GameOverState } from '../states/GameOverState';
 //import { pulseXRController } from '../input/XRGamepadUtils';
 import { randomTransform } from '../core/Utils';
-import { Sparkles } from '../animation/Sparkles';
 import { Haptics } from '../input/XRGamepadUtils';
 
 export class Game {
@@ -23,7 +22,6 @@ export class Game {
   #audio: AudioManager;
   #world: World;
   #sm: StateMachine;
-  #sparkles: Sparkles; // TODO: should be handled in World?
   #haptics: Haptics;
 
 
@@ -31,7 +29,6 @@ export class Game {
     this.#render = new RenderingManager();
     this.#world = new World(this.#render.scene);
     this.#audio = new AudioManager(this.#render.camera, new OscillatorSoundEngine()); // or: new ZzfxSoundEngine() 
-    this.#sparkles = new Sparkles(this.#render.scene);
     this.#haptics = new Haptics(this.#render.renderer);
     this.#input = new InputManager(this.#render.renderer, this.#render.scene, this.#render.camera);
     this.#sm = this.#buildStateMachine();
