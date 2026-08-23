@@ -1,22 +1,27 @@
-import { InstancedMesh, BoxGeometry, MeshBasicMaterial, Matrix4, Vector3, Quaternion, Color } from 'three';
+import { BoxGeometry, Matrix4, Vector3, Quaternion, Color } from 'three';
 import type { Scene, PerspectiveCamera } from 'three';
 import type { ITransform } from '../../../types/ITransform';
 import type { ITextEngine, TextStyle } from '../../ITextEngine';
+import { InstancedPool } from '../../../rendering/InstancedPool';
 import { GLYPH_W, GLYPH_H, glyphRows, isLit } from './littleJsFont';
-import { UP, ZERO_SCALE_MATRIX } from './constants';
+import { UP } from './constants';
 
+// Every label's voxels are indices into one shared InstancedPool (see
+// rendering/InstancedPool.ts) — allocating N indices, not spawning N
+// primitives. destroy() frees them back to the pool for reuse by the next
+// label, same class Sparkles now uses.
 type VoxelHandle = {
-  start: number;
-  count: number;
-  offsets: Vector3[];
+  indices: number[];
+  offsets: Vector3[]; // local, pre-billboard, centred on the label's own origin — parallel to indices
   floatHeight: number;
   visible: boolean;
 };
 
-const CHAR_ADVANCE = GLYPH_W + 1;
+const CHAR_ADVANCE = GLYPH_W + 1; // 1 column of spacing between glyphs
 const DEFAULT_FLOAT_HEIGHT_m = 0.08;
 const FULL_LABEL_COLOR = '#ff3333';
 
+// scratch — reused by every sync() call, nothing allocated per frame/label
 const _worldPos = new Vector3();
 const _eye = new Vector3();
 const _rotMat = new Matrix4();
@@ -26,113 +31,109 @@ const _instPos = new Vector3();
 const _scaleVec = new Vector3();
 
 export class VoxelTextEngine implements ITextEngine {
-  #mesh: InstancedMesh;
-  #material: MeshBasicMaterial;
+  #pool: InstancedPool;
   #camera: PerspectiveCamera;
   #voxelSize: number;
-  #maxInstances: number;
-  #nextFree = 0;
   #reportedFull = false;
 
   constructor(scene: Scene, camera: PerspectiveCamera, voxelSize = 0.008, maxInstances = 2048) {
     this.#camera = camera;
     this.#voxelSize = voxelSize;
-    this.#maxInstances = maxInstances;
-    this.#material = new MeshBasicMaterial();
-    this.#mesh = new InstancedMesh(new BoxGeometry(1, 1, 1), this.#material, maxInstances);
-    this.#mesh.count = 0;
-    this.#mesh.frustumCulled = false; // see note: bounding sphere ignores scattered instances
-    scene.add(this.#mesh);
+    this.#pool = new InstancedPool(scene, new BoxGeometry(1, 1, 1), maxInstances);
   }
 
   create(text: string, anchor?: ITransform, style?: TextStyle): VoxelHandle {
     const offsets = this.#layout(text);
-    const count = offsets.length;
-    const start = this.#nextFree;
-    if (start + count > this.#maxInstances) {
+    if (this.#pool.freeCount < offsets.length) {
       this.#reportFull(anchor);
-      return { start, count: 0, offsets: [], floatHeight: DEFAULT_FLOAT_HEIGHT_m, visible: true };
+      return { indices: [], offsets: [], floatHeight: DEFAULT_FLOAT_HEIGHT_m, visible: true };
     }
-    this.#nextFree += count;
-    this.#mesh.count = this.#nextFree;
-    this.#paint(start, count, style?.color ?? '#ffffff');
+    const indices = offsets.map(() => this.#pool.allocate()!); // capacity just checked above
+    this.#paint(indices, style?.color ?? '#ffffff');
 
-    const handle: VoxelHandle = { start, count, offsets, floatHeight: DEFAULT_FLOAT_HEIGHT_m, visible: true };
+    const handle: VoxelHandle = { indices, offsets, floatHeight: DEFAULT_FLOAT_HEIGHT_m, visible: true };
     if (anchor) this.sync(handle, anchor);
     return handle;
   }
 
   setText(handle: unknown, text: string): void {
     const h = handle as VoxelHandle;
-    h.offsets = this.#layout(text).slice(0, h.count);
-    for (let i = h.offsets.length; i < h.count; i++) this.#hideInstance(h.start + i);
+    const offsets = this.#layout(text);
+
+    while (h.indices.length > offsets.length) this.#pool.free(h.indices.pop()!);
+    while (h.indices.length < offsets.length) {
+      const i = this.#pool.allocate();
+      if (i === null) break; // out of room: text silently truncates rather than crashing
+      h.indices.push(i);
+    }
+    h.offsets = offsets.slice(0, h.indices.length);
   }
 
-  // TODO: QUESTION: rename to setVisibility?
   setVisible(handle: unknown, visible: boolean): void {
     (handle as VoxelHandle).visible = visible;
   }
 
   sync(handle: unknown, anchor: ITransform): void {
     const h = handle as VoxelHandle;
-    if (h.count === 0) return;
+    if (h.indices.length === 0) return;
 
     _worldPos.setFromMatrixPosition(anchor.matrixWorld);
     _worldPos.y += h.floatHeight;
 
+    // Y-locked (cylindrical) billboard: faces the camera horizontally, never
+    // tilts up/down, so the text stays upright and readable. For a full
+    // spherical billboard, drop the Y-lock and use camera.position directly.
     _eye.set(this.#camera.position.x, _worldPos.y, this.#camera.position.z);
     _rotMat.lookAt(_eye, _worldPos, UP);
     _quat.setFromRotationMatrix(_rotMat);
 
     _scaleVec.setScalar(h.visible ? this.#voxelSize : 0);
-    for (let i = 0; i < h.offsets.length; i++) {
+    for (let i = 0; i < h.indices.length; i++) {
       _instPos.copy(h.offsets[i]).applyQuaternion(_quat).add(_worldPos);
       _instMat.compose(_instPos, _quat, _scaleVec);
-      this.#mesh.setMatrixAt(h.start + i, _instMat);
+      this.#pool.setMatrix(h.indices[i], _instMat);
     }
-    this.#mesh.instanceMatrix.needsUpdate = true;
   }
 
   destroy(handle: unknown): void {
     const h = handle as VoxelHandle;
-    for (let i = 0; i < h.count; i++) this.#hideInstance(h.start + i);
-    this.#mesh.instanceMatrix.needsUpdate = true;
+    for (const i of h.indices) this.#pool.free(i);
+    h.indices = [];
   }
 
   dispose(): void {
-    this.#mesh.geometry.dispose();
-    this.#material.dispose();
-    this.#mesh.removeFromParent();
+    this.#pool.dispose();
   }
 
-  #hideInstance(index: number): void {
-    this.#mesh.setMatrixAt(index, ZERO_SCALE_MATRIX);
-  }
-
-  #paint(start: number, count: number, colorHex: string): void {
+  #paint(indices: number[], colorHex: string): void {
     const color = new Color(colorHex);
-    for (let i = 0; i < count; i++) this.#mesh.setColorAt(start + i, color);
-    if (this.#mesh.instanceColor) this.#mesh.instanceColor.needsUpdate = true;
+    for (const i of indices) this.#pool.setColor(i, color);
   }
 
+  // No console: it doesn't exist in a headset. Report capacity errors the
+  // same way as any other label — through this engine, once, not per failed
+  // create(). Silently gives up only if there's no room even for "FULL".
   #reportFull(anchor?: ITransform): void {
     if (this.#reportedFull) return;
     this.#reportedFull = true;
+
     const offsets = this.#layout('FULL');
-    const start = this.#nextFree;
-    if (start + offsets.length > this.#maxInstances) return;
-    this.#nextFree += offsets.length;
-    this.#mesh.count = this.#nextFree;
-    this.#paint(start, offsets.length, FULL_LABEL_COLOR);
-    const handle: VoxelHandle = { start, count: offsets.length, offsets, floatHeight: DEFAULT_FLOAT_HEIGHT_m, visible: true };
+    if (this.#pool.freeCount < offsets.length) return;
+    const indices = offsets.map(() => this.#pool.allocate()!);
+    this.#paint(indices, FULL_LABEL_COLOR);
+
+    const handle: VoxelHandle = { indices, offsets, floatHeight: DEFAULT_FLOAT_HEIGHT_m, visible: true };
     if (anchor) this.sync(handle, anchor);
   }
 
+  // No canvas, no fillText: glyphs come straight from the packed table,
+  // so output is identical on every browser/OS/font-availability combination.
   #layout(text: string): Vector3[] {
     const glyphs = text.split('').map(glyphRows).filter((g): g is number[] => !!g);
     const width = glyphs.length * CHAR_ADVANCE - 1;
     const originX = -width / 2;
     const s = this.#voxelSize;
+
     const offsets: Vector3[] = [];
     glyphs.forEach((rows, ci) => {
       for (let y = 0; y < GLYPH_H; y++)

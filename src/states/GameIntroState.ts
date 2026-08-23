@@ -1,17 +1,25 @@
 import { State } from '../core/State';
 import type { ITransition } from '../core/StateMachine';
+import type { ITransform } from '../types/ITransform';
+import type { TextManager } from '../text/TextManager';
+import type { TextHandle } from '../text/ITextEngine';
 import { SelectCommand } from '../commands/SelectCommand';
 import { GamePlacingState } from './GamePlacingState';
-import { createOverlay } from '../core/Utils';
 
 export class GameIntroState extends State {
   #sm: ITransition;
-  #message = createOverlay('Tap to start');
+  #text: TextManager;
+  #message: TextHandle;
 
-  constructor(sm: ITransition) {
+  constructor(sm: ITransition, text: TextManager, hudAnchor: ITransform) {
     super();
     this.#sm = sm;
+
+    this.#text = text;
+    this.#message = text.show('TAP TO START', hudAnchor, { color: '#ffffff' });
+    this.#text.setVisible(this.#message, false);
     this.#registerHandlers();
+
   }
 
   #registerHandlers() {
@@ -24,8 +32,6 @@ export class GameIntroState extends State {
     this.#sm.change(GamePlacingState);
   };
 
-  override enter() { this.#message.style.display = 'grid'; }
-
-  override exit() { this.#message.style.display = 'none'; }
-
+  override enter() { this.#text.setVisible(this.#message, true); }
+  override exit() { this.#text.setVisible(this.#message, false); }
 }

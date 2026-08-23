@@ -13,6 +13,8 @@ export class RenderingManager {
   camera: PerspectiveCamera;
   renderer: WebGLRenderer;
   anchor: Group; // extra node useful for XR placement
+  hudAnchor: Group; // child of camera, fixed position/orientation relative to the viewer, for camera-facing text
+
 
   constructor() {
     this.renderer = new WebGLRenderer({ antialias: true, alpha: true });
@@ -35,6 +37,10 @@ export class RenderingManager {
     this.scene.add(this.anchor);
     this.camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10);
     this.camera.position.set(0, 1.6, 3);
+
+    this.hudAnchor = new Group();
+    this.hudAnchor.position.set(0, 0, -0.5); // 0.5m in front of wherever the camera looks
+    this.camera.add(this.hudAnchor);
 
     this.scene.add(new AmbientLight(0xffffff, 1.0));
     const hemi = new HemisphereLight(0xffffff, 0xbbbbff, 3);

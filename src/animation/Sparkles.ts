@@ -1,10 +1,11 @@
-import { Mesh, MeshBasicMaterial, BoxGeometry, Vector3, MathUtils } from 'three';
-import type { Object3D, Color } from 'three';
-import { easeOutQuint, easeOutBack } from './Easing';
+import { BoxGeometry, Vector3, MathUtils, Matrix4, Quaternion, Color } from 'three';
+import type { Object3D } from 'three';
+import { InstancedPool } from '../rendering/InstancedPool';
+import { easeOutQuint } from './Easing';
 import type { Ease } from './Easing';
 
 type Particle = {
-  mesh: Mesh;
+  index: number;
   active: boolean;
   elapsed: number;
   duration: number;
@@ -14,8 +15,8 @@ type Particle = {
   toScale: number;
 };
 
-const GEOMETRY = new BoxGeometry(); // defqult cube, will be scled later during particle animation
 const SPREAD_m = 0.3; // meters a particle travels from / to the burst origin
+const IDENTITY_QUAT = new Quaternion(); // particles never rotate // TODO: QUESTION: why not?
 
 export type BurstMode = 'explode' | 'converge'; // TODO: replace with a better enum?
 
@@ -23,77 +24,91 @@ export type BurstMode = 'explode' | 'converge'; // TODO: replace with a better e
 // Two groups, matching the reference: a larger set that takes on the
 // spawning cone's own colour, and a smaller fixed-color accent for glint.
 
+// One shared InstancedPool backs every particle in both groups — allocated
+// once here, held for Sparkles' whole lifetime, never freed/reallocated:
+// burst() just rewrites the same indices' matrices, same fixed-pool
+// behaviour as before, now one draw call instead of 35 Mesh objects.
+
 type ParticleGroup = {
   particles: Particle[];
-  material: MeshBasicMaterial; // shared by every particle in the group
+  color: Color;         // current colour for the group; matchColor groups repaint this on burst
   scale: number;
   ease: Ease;
   matchColor: boolean;           // recolour to the spawning cone each burst, or stay fixed
 };
 
+// CONST
+const GROUP_A = 20, GROUP_B = 15;
+
+// TMP
+const _offset = new Vector3();
+const _scattered = new Vector3();
+const _pos = new Vector3();
+const _scale = new Vector3();
+const _mat = new Matrix4();
+
 export class Sparkles {
-  #parent: Object3D;
+  //#parent: Object3D;
+  #pool: InstancedPool;
   #groups: ParticleGroup[];
 
-  // TODO: can we avoid the new Vector3s here?
 
   constructor(parent: Object3D) {
-    this.#parent = parent;
+    this.#pool = new InstancedPool(parent, new BoxGeometry(), GROUP_A + GROUP_B);
+    //this.#parent = parent; // TODO: QUESTION: no longer needed for anchoring? If so should this pool be better handled by World or RenderingManager? Particles seems to hold the lifecycle
     this.#groups = [
-      this.#createGroup(20, 0xffffff, 0.03, easeOutQuint, true),  // matches the cone's colour
-      this.#createGroup(15, 0xffe9a8, 0.015, easeOutQuint, false), // fixed warm glint
+      this.#createGroup(GROUP_A, 0xffffff, 0.03, easeOutQuint, true), // cone color
+      this.#createGroup(GROUP_B, 0xffe9a8, 0.015, easeOutQuint, false) // glint
     ];
   }
 
-  #createGroup(count: number, color: number, scale: number, ease: Ease, matchColor: boolean): ParticleGroup {
-    const material = new MeshBasicMaterial({ color });
+  #createGroup(count: number, colorHex: number, scale: number, ease: Ease, matchColor: boolean): ParticleGroup {
+    const color = new Color(colorHex);
     const particles: Particle[] = [];
     for (let i = 0; i < count; i++) {
-      const mesh = new Mesh(GEOMETRY, material);
-      mesh.scale.setScalar(0);
-      this.#parent.add(mesh);
+      const index = this.#pool.allocate()!; // capacity == GROUP_A+GROUP_B
+      this.#pool.setColor(index, color);
       particles.push({
-        mesh, active: false, elapsed: 0, duration: 0.5,
+        index, active: false, elapsed: 0, duration: 0.5,
         from: new Vector3(), to: new Vector3(), fromScale: 0, toScale: 0,
       });
     }
-    return { particles, material, scale, ease, matchColor };
+    return { particles, color, scale, ease, matchColor };
   }
 
   burst(origin: Vector3, color: Color, mode: BurstMode = 'converge') {
     for (const group of this.#groups) {
-      if (group.matchColor) {
-        group.material.color.copy(color);
+      if (group.matchColor && !group.color.equals(color)) {
+        group.color.copy(color);
+        for (const p of group.particles) this.#pool.setColor(p.index, color);
       }
-
-      for (const p of group.particles) {
-        this.#fire(p, origin, mode, group.scale);
-      }
+      for (const p of group.particles) this.#fire(p, origin, mode, group.scale);
     }
   }
 
+
   #fire(p: Particle, origin: Vector3, mode: BurstMode, scale: number) {
-    const _offset = new Vector3(
+    _offset.set(
       Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1
     ).normalize().multiplyScalar(SPREAD_m * (0.5 + Math.random() * 0.5));
-    const scattered = origin.clone().add(_offset);
 
-    p.from.copy(mode === 'explode' ? origin : scattered);
-    p.to.copy(mode === 'explode' ? scattered : origin);
+    _scattered.copy(origin).add(_offset);
+
+    p.from.copy(mode === 'explode' ? origin : _scattered);
+    p.to.copy(mode === 'explode' ? _scattered : origin);
     p.fromScale = mode === 'explode' ? scale : 0;
     p.toScale = mode === 'explode' ? 0 : scale;
     p.elapsed = 0;
     p.duration = 0.7 + Math.random() * 0.3;
     p.active = true;
-    p.mesh.position.copy(p.from);
-    p.mesh.scale.setScalar(p.fromScale);
+    this.#pool.setMatrix(p.index, _mat.compose(p.from, IDENTITY_QUAT, _scale.setScalar(p.fromScale)));
+
   }
 
   update(delta: number) {
     for (const group of this.#groups)
-      for (const p of group.particles) {
-        this.#advance(p, group.ease, delta);
-      }
+      for (const p of group.particles) this.#advance(p, group.ease, delta);
+
   }
 
   #advance(p: Particle, ease: Ease, delta: number) {
@@ -102,23 +117,13 @@ export class Sparkles {
     p.elapsed += delta;
     const t = Math.min(p.elapsed / p.duration, 1);
     const et = ease(t);
-    p.mesh.position.lerpVectors(p.from, p.to, et);
-    p.mesh.scale.setScalar(MathUtils.lerp(p.fromScale, p.toScale, et));
-
-    if (t >= 1) {
-      p.active = false;
-      p.mesh.scale.setScalar(0);
-    }
+    _pos.lerpVectors(p.from, p.to, et);
+    _scale.setScalar(t >= 1 ? 0 : MathUtils.lerp(p.fromScale, p.toScale, et));
+    this.#pool.setMatrix(p.index, _mat.compose(_pos, IDENTITY_QUAT, _scale));
+    if (t >= 1) p.active = false;
   }
 
   dispose() {
-    for (const group of this.#groups) {
-      for (const p of group.particles) {
-        this.#parent.remove(p.mesh);
-      }
-
-      group.material.dispose();
-    }
-    GEOMETRY.dispose();
+    this.#pool.dispose();
   }
 }

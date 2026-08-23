@@ -47,10 +47,10 @@ export class Game {
   // NOTE: Starting in Intro means the first tap changes state instead of spawning a cone.
   #buildStateMachine(): StateMachine {
     const sm = new StateMachine();
-    sm.register(GameIntroState, new GameIntroState(sm));
+    sm.register(GameIntroState, new GameIntroState(sm, this.#text, this.#render.hudAnchor));
     sm.register(GamePlacingState, new GamePlacingState(this.#render, sm));
     sm.register(GameRunningState, new GameRunningState(this.#world, this.#audio, this.#haptics, sm, this.#text));
-    sm.register(GameOverState, new GameOverState(sm));
+    sm.register(GameOverState, new GameOverState(sm, this.#text, this.#render.hudAnchor));
     sm.start(GameIntroState);
     return sm;
   }
