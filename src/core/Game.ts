@@ -16,12 +16,15 @@ import { GameOverState } from '../states/GameOverState';
 import { randomTransform } from '../core/Utils';
 import { Haptics } from '../input/XRGamepadUtils';
 import { GamePlacingState } from '../states/GamePlacingState';
+import { TextManager } from '../text/TextManager';
+import { VoxelTextEngine } from '../text/engines/voxel/VoxelTextEngine';
 
 export class Game {
   #render: RenderingManager;
   #input: InputManager;
   #audio: AudioManager;
   #world: World;
+  #text: TextManager
   #sm: StateMachine;
   #haptics: Haptics;
 
@@ -32,6 +35,8 @@ export class Game {
     this.#audio = new AudioManager(this.#render.camera, new OscillatorSoundEngine()); // or: new ZzfxSoundEngine() 
     this.#haptics = new Haptics(this.#render.renderer);
     this.#input = new InputManager(this.#render.renderer, this.#render.scene, this.#render.camera);
+    this.#text = new TextManager(new VoxelTextEngine(this.#render.scene, this.#render.camera));
+
     this.#sm = this.#buildStateMachine();
 
 
@@ -44,7 +49,7 @@ export class Game {
     const sm = new StateMachine();
     sm.register(GameIntroState, new GameIntroState(sm));
     sm.register(GamePlacingState, new GamePlacingState(this.#render, sm));
-    sm.register(GameRunningState, new GameRunningState(this.#world, this.#audio, this.#haptics, sm));
+    sm.register(GameRunningState, new GameRunningState(this.#world, this.#audio, this.#haptics, sm, this.#text));
     sm.register(GameOverState, new GameOverState(sm));
     sm.start(GameIntroState);
     return sm;

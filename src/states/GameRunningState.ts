@@ -6,6 +6,7 @@ import type { AudioManager } from '../audio/AudioManager';
 import type { Haptics } from '../input/XRGamepadUtils';
 import type { ITransition } from '../core/StateMachine';
 import { GameOverState } from './GameOverState';
+import type { TextManager } from '../text/TextManager';
 
 const ROUND_SECONDS = 45;
 
@@ -14,14 +15,16 @@ export class GameRunningState extends State {
   #audio: AudioManager;
   #haptics: Haptics;
   #transition: ITransition;
+  #text: TextManager;
   #timeLeft = ROUND_SECONDS;
 
-  constructor(world: World, audio: AudioManager, haptics: Haptics, transition: ITransition) {
+  constructor(world: World, audio: AudioManager, haptics: Haptics, transition: ITransition, text: TextManager) {
     super();
     this.#world = world;
     this.#audio = audio;
     this.#haptics = haptics;
     this.#transition = transition;
+    this.#text = text;
     this.#registerHandlers();
   }
 
@@ -31,6 +34,8 @@ export class GameRunningState extends State {
 
   #onSelect = (cmd: SelectCommand) => {
     const { mesh, color } = this.#world.spawn(cmd.transform);
+    const hex = `#${color.getHexString()}`;
+    this.#text.show(hex, mesh, { color: hex }); // label reads its own colour
     this.#audio.playSFX('spawn', mesh); // positional
     this.#world.burstSparkles(mesh.position, color);
     this.#haptics.pulse(cmd.handedness);
@@ -38,6 +43,7 @@ export class GameRunningState extends State {
 
   override update(delta: number) {
     this.#world.update(delta);
+    this.#text.update(delta);
 
     this.#timeLeft -= delta;
     if (this.#timeLeft <= 0) {
