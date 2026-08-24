@@ -34,6 +34,8 @@ export class InstancedPool {
     if (this.#nextRaw >= this.#capacity) return null;
     const i = this.#nextRaw++;
     this.#mesh.count = this.#nextRaw;
+    this.#mesh.setMatrixAt(i, ZERO_SCALE_MATRIX); // safe default until the caller positions it
+    this.#mesh.instanceMatrix.needsUpdate = true;
     return i;
   }
 
