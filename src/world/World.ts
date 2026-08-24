@@ -53,6 +53,10 @@ export class World {
     mesh.quaternion.copy(this.#_quat);
     this.#root.add(mesh);
 
+    // walks up through #root (anchor) too, not just this mesh
+    // callers use the returned mesh as a same-frame text anchor immediately below
+    mesh.updateWorldMatrix(true, false);
+
     const hsl = { h: 0, s: 0, l: 0 };
     material.color.getHSL(hsl);
     const axis = new Vector3(

@@ -50,6 +50,10 @@ export class RenderingManager {
     this.renderer.xr.addEventListener('sessionstart', this.#onXRStart);
     this.renderer.xr.addEventListener('sessionend', this.#onXREnd);
     window.addEventListener('resize', this.#onResize);
+
+    // matrixWorld is only ever recomputed inside render()
+    // anything reading it before the first render sees identity if we don't update the martix here.
+    this.scene.updateMatrixWorld(true);
   }
 
   render() { this.renderer.render(this.scene, this.camera); }
