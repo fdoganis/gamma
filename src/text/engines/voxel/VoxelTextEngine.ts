@@ -36,7 +36,7 @@ export class VoxelTextEngine implements ITextEngine {
   #voxelSize: number;
   #reportedFull = false;
 
-  constructor(scene: Scene, camera: PerspectiveCamera, voxelSize = 0.008, maxInstances = 2048) {
+  constructor(scene: Scene, camera: PerspectiveCamera, voxelSize = 0.008, maxInstances = 1024 * 1024) {
     this.#camera = camera;
     this.#voxelSize = voxelSize;
     this.#pool = new InstancedPool(scene, new BoxGeometry(1, 1, 1), maxInstances);
@@ -59,13 +59,20 @@ export class VoxelTextEngine implements ITextEngine {
   setText(handle: unknown, text: string): void {
     const h = handle as VoxelHandle;
     const offsets = this.#layout(text);
+    //const grown: number[] = []
 
     while (h.indices.length > offsets.length) this.#pool.free(h.indices.pop()!);
+
     while (h.indices.length < offsets.length) {
       const i = this.#pool.allocate();
       if (i === null) break; // out of room: text silently truncates rather than crashing
       h.indices.push(i);
+      //grown.push(i);
     }
+    // freed indices carry the previous owner's colour, so anything we grow
+    // into has to be repainted, not just repositioned
+    //if (grown.length) this.#paint(grown, h.color); // TODO: QUESTION: color? on handle?
+
     h.offsets = offsets.slice(0, h.indices.length);
   }
 
