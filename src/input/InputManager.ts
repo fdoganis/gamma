@@ -1,3 +1,4 @@
+// src/input/InputManager.ts
 import type { WebGLRenderer, Scene, PerspectiveCamera } from 'three';
 import { InputProcessor } from './InputProcessor';
 import { SpatialInputSource } from './SpatialInputSource';
@@ -35,7 +36,7 @@ export class InputManager {
 
     this.gamepadLeft = GamepadSource.forXRController(renderer, 'left');
     this.gamepadRight = GamepadSource.forXRController(renderer, 'right');
-    this.gamepadPool = new GamepadPool(this.#processor);
+    this.gamepadPool = new GamepadPool(this.#processor, renderer);
 
     const keyboard = new KeyboardInputSource();
     const pointer = new PointerInputSource(renderer, camera);

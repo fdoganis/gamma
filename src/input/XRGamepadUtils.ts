@@ -1,3 +1,4 @@
+// src/input/XRGamepadUtils.ts
 
 import type { WebGLRenderer } from 'three';
 import type { XRHandedness } from '../types/XRTypes';
@@ -11,6 +12,19 @@ export function findXRGamepad(renderer: WebGLRenderer, handedness: XRHandedness)
   for (const source of session.inputSources)
     if (source.handedness === handedness && source.gamepad) return source.gamepad;
   return null;
+}
+
+// The "excluded by default" assumption above isn't guaranteed on every
+// WebXR implementation — plausibly (not confirmed) the Meta immersive-web
+// emulator surfaces an XR controller's own gamepad through the plain
+// navigator.getGamepads() too. GamepadPool uses this to keep from binding
+// that same physical trigger a second time, regardless of which is true.
+export function isXRGamepad(renderer: WebGLRenderer, gamepad: Gamepad): boolean {
+  const session = renderer.xr.getSession();
+  if (!session) return false;
+  for (const source of session.inputSources)
+    if (source.gamepad === gamepad) return true;
+  return false;
 }
 
 // TODO: ARCHI: QUESTION: Move Haptics elsewhere?
