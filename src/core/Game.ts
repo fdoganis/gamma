@@ -74,7 +74,10 @@ export class Game {
     for (const cmd of this.#input.commands) this.#sm.dispatch(cmd);
   }
 
-  update(delta: number, frame?: XRFrame) { this.#sm.update(delta, frame); }
+  update(delta: number, frame?: XRFrame) {
+    this.#sm.update(delta, frame);
+    this.#text.update(delta); // labels are global, not owned by the active state
+  }
 
   render() { this.#render.render(); }
 
