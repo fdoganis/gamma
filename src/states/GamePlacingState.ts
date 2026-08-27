@@ -77,15 +77,19 @@ export class GamePlacingState extends State {
 
     if (this.#hitTestSource) {
       const hits = frame.getHitTestResults(this.#hitTestSource);
-      this.#reticle.visible = hits.length > 0;
-      if (hits.length > 0) {
-        this.#reticle.matrix.fromArray(hits[0].getPose(refSpace)!.transform.matrix);
-      }
+      const pose = hits.length > 0 ? hits[0].getPose(refSpace) : null;
+
+      this.#reticle.visible = !!pose; // visible only when we have a real pose
+
+      if (pose) this.#reticle.matrix.fromArray(pose.transform.matrix);
+
     }
   }
 
   override enter() {
     this.#reticle.visible = false;
+    this.#reticle.matrix.identity();  // reset pose
+
   }
 
   override exit() {
