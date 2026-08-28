@@ -24,9 +24,9 @@ export class TextManager {
     this.#labels.delete(handle);
   }
 
-  update(_delta: number) {
+  update(delta: number) {
     for (const [handle, anchor] of this.#labels)
-      if (anchor) this.#engine.sync?.(handle, anchor);
+      if (anchor) this.#engine.sync?.(handle, anchor, delta); // TODO: QUESTION: NAMING: why call this "sync" instead of "update" for example?
   }
 
   // TODO: QUESTION: remove vs dispose? confusing API

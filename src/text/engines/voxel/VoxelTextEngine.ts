@@ -52,7 +52,7 @@ export class VoxelTextEngine implements ITextEngine {
     this.#paint(indices, style?.color ?? '#ffffff');
 
     const handle: VoxelHandle = { indices, offsets, floatHeight: DEFAULT_FLOAT_HEIGHT_m, visible: true };
-    if (anchor) this.sync(handle, anchor);
+    if (anchor) this.sync(handle, anchor, 0);
     return handle;
   }
 
@@ -80,7 +80,7 @@ export class VoxelTextEngine implements ITextEngine {
     (handle as VoxelHandle).visible = visible;
   }
 
-  sync(handle: unknown, anchor: ITransform): void {
+  sync(handle: unknown, anchor: ITransform, delta: number): void {
     const h = handle as VoxelHandle;
     if (h.indices.length === 0) return;
 
@@ -130,7 +130,7 @@ export class VoxelTextEngine implements ITextEngine {
     this.#paint(indices, FULL_LABEL_COLOR);
 
     const handle: VoxelHandle = { indices, offsets, floatHeight: DEFAULT_FLOAT_HEIGHT_m, visible: true };
-    if (anchor) this.sync(handle, anchor);
+    if (anchor) this.sync(handle, anchor, 0);
   }
 
   // No canvas, no fillText: glyphs come straight from the packed table,
