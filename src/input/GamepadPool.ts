@@ -1,23 +1,17 @@
 // TODO: rename?
-import type { WebGLRenderer } from 'three';
 import { InputProcessor } from './InputProcessor';
 import { GamepadSource } from './GamepadSource';
-import { isXRGamepad } from './XRGamepadUtils';
 
 // Desktop/couch-multiplayer: however many pads show up, no XR session required. 
 // Gamepads tied to an active XR session are excluded from this
-// API by default, so this is a genuinely separate pool from the controllers —
-// #add() double-checks that exclusion itself (see isXRGamepad) rather than
-// trusting every browser/emulator to honour it.
+// API by default, so this is a genuinely separate pool from the controllers.
 export class GamepadPool {
   #processor: InputProcessor;
-  #renderer: WebGLRenderer;
   #pads = new Map<number, GamepadSource>();
   #listeners: ((pad: GamepadSource) => void)[] = [];
 
-  constructor(processor: InputProcessor, renderer: WebGLRenderer) {
+  constructor(processor: InputProcessor) {
     this.#processor = processor;
-    this.#renderer = renderer;
     window.addEventListener('gamepadconnected', this.#onConnected);
     window.addEventListener('gamepaddisconnected', this.#onDisconnected);
     // Chrome issues with gamepadconnected for pads that were already on before the page loaded
@@ -33,7 +27,6 @@ export class GamepadPool {
 
   #add(gamepad: Gamepad) {
     if (this.#pads.has(gamepad.index)) { return; }
-    if (isXRGamepad(this.#renderer, gamepad)) { return; } // same trigger already bound via xrLeft/xrRight's native 'select' event
 
     const source = GamepadSource.forDesktopPad(gamepad.index);
     this.#pads.set(gamepad.index, source);

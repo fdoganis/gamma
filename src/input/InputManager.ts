@@ -34,7 +34,7 @@ export class InputManager {
 
     this.gamepadLeft = GamepadSource.forXRController(renderer, 'left');
     this.gamepadRight = GamepadSource.forXRController(renderer, 'right');
-    this.gamepadPool = new GamepadPool(this.#processor, renderer);
+    this.gamepadPool = new GamepadPool(this.#processor);
 
     const keyboard = new KeyboardInputSource();
     const pointer = new PointerInputSource(renderer, camera);
