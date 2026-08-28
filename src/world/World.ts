@@ -54,7 +54,7 @@ export class World {
     const r = Math.random() * SPAWN_RADIUS_m;
     const material = new MeshPhongMaterial({ color: PALETTE[Math.floor(Math.random() * PALETTE.length)] });
     const mesh = new Mesh(this.#geo, material);
-    mesh.position.copy(this.#_pos);
+    mesh.castShadow = true;
     mesh.position.set(Math.cos(angle) * r, CONE_REST_Y_m, Math.sin(angle) * r); // local to #root == local to the placed surface in XR
     this.#root.add(mesh);
 

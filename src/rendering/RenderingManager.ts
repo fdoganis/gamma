@@ -4,6 +4,10 @@ import {
   PerspectiveCamera,
   AmbientLight,
   HemisphereLight,
+  DirectionalLight,
+  Mesh,
+  PlaneGeometry,
+  ShadowMaterial,
   Group
 } from 'three';
 import { XRButton } from 'three/addons/webxr/XRButton.js';
@@ -41,11 +45,30 @@ export class RenderingManager {
     this.hudAnchor = new Group();
     this.hudAnchor.position.set(0, 0, -0.5); // 0.5m in front of wherever the camera looks
     this.camera.add(this.hudAnchor);
+    this.renderer.shadowMap.enabled = true;
 
     this.scene.add(new AmbientLight(0xffffff, 1.0));
     const hemi = new HemisphereLight(0xffffff, 0xbbbbff, 3);
     hemi.position.set(0.5, 1, 0.25);
     this.scene.add(hemi);
+
+    // Parented to anchor, not scene: 
+    // light source and shadow target follow the placement
+    const sun = new DirectionalLight(0xffffff, 3); // also gives Phong voxels a shading gradient
+    sun.position.set(0, 1, 0);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(512, 512); // small play area (±1m frustum) — this re-renders every frame, keep it cheap
+    sun.shadow.camera.top = 1; sun.shadow.camera.bottom = -1;
+    sun.shadow.camera.right = 1; sun.shadow.camera.left = -1;
+    sun.shadow.camera.near = 0.1; sun.shadow.camera.far = 3;
+    this.anchor.add(sun, sun.target);
+
+    // Invisible: only its shadow renders, so virtual objects appear to cast a shadow
+    // onto the real (passthrough) floor. Sized to comfortably cover the spawn disc.
+    const catcher = new Mesh(new PlaneGeometry(2, 2), new ShadowMaterial({ opacity: 0.5 }));
+    catcher.rotation.x = -Math.PI / 2;
+    catcher.receiveShadow = true;
+    this.anchor.add(catcher);
 
     this.renderer.xr.addEventListener('sessionstart', this.#onXRStart);
     this.renderer.xr.addEventListener('sessionend', this.#onXREnd);
