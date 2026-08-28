@@ -18,6 +18,7 @@ export class RenderingManager {
   renderer: WebGLRenderer;
   anchor: Group; // extra node useful for XR placement
   hudAnchor: Group; // child of camera, fixed position/orientation relative to the viewer, for camera-facing text
+  timerAnchor: Group; // child of anchor: pinned to the placed surface, not the camera; VoxelTextEngine still billboards it to face the viewer
 
 
   constructor() {
@@ -44,8 +45,13 @@ export class RenderingManager {
     this.camera.position.set(0, 1.6, 3); // NOTE: Once in XR setting the camera is pointless: your head / smartphone screen drives the camera
 
     this.hudAnchor = new Group();
-    this.hudAnchor.position.set(0, 0, -0.5); // 0.5m in front of wherever the camera looks
+    this.hudAnchor.position.set(0, 0, -1); // 1m in front of wherever the camera looks
     this.camera.add(this.hudAnchor);
+
+    this.timerAnchor = new Group();
+    this.timerAnchor.position.set(0, 0.4, 0); // 0.4m above the placed surface
+    this.anchor.add(this.timerAnchor);
+
     this.renderer.shadowMap.enabled = true;
 
     this.scene.add(new AmbientLight(0xffffff, 1.0));
