@@ -1,7 +1,7 @@
 import type { ITransform } from '../types/ITransform';
 
-export type TextHandle = unknown; // defined by each Engine implementqtion, no common type
-export type TextStyle = { color?: string; size?: number };
+export type TextHandle = unknown; // defined by each Engine implementation, no common type
+export type TextStyle = { color?: string; size?: number; visible?: boolean };
 
 export interface ITextEngine {
   create(text: string, anchor?: ITransform, style?: TextStyle): TextHandle;

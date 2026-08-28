@@ -17,8 +17,7 @@ export class GameOverState extends State {
     this.#sm = sm;
 
     this.#text = text;
-    this.#message = text.show('GAME OVER', hudAnchor, { color: '#ff3333' });
-    this.#text.setVisible(this.#message, false);
+    this.#message = text.show('GAME OVER', hudAnchor, { color: '#ff3333', visible: false });
     this.#registerHandlers();
 
   }
@@ -30,5 +29,5 @@ export class GameOverState extends State {
   #onSelect = () => { this.#sm.change(GameIntroState); };
 
   override enter() { this.#text.setVisible(this.#message, true); }
-  override exit() { this.#text.setVisible(this.#message, false); }
+  override exit() { this.#text.setVisible(this.#message, false); } // TODO: QUESTION: LIFECYCLE: who cleans the cones?
 }

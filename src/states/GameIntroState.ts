@@ -16,8 +16,7 @@ export class GameIntroState extends State {
     this.#sm = sm;
 
     this.#text = text;
-    this.#message = text.show('TAP TO START', hudAnchor, { color: '#ffffff' });
-    this.#text.setVisible(this.#message, false);
+    this.#message = text.show('TAP TO START', hudAnchor, { color: '#ffffff', visible: false });
     this.#registerHandlers();
 
   }
