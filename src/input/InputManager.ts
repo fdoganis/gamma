@@ -1,4 +1,3 @@
-// src/input/InputManager.ts
 import type { WebGLRenderer, Scene, PerspectiveCamera } from 'three';
 import { InputProcessor } from './InputProcessor';
 import { SpatialInputSource } from './SpatialInputSource';
@@ -6,7 +5,6 @@ import { KeyboardInputSource } from './KeyboardInputSource';
 import { PointerInputSource } from './PointerInputSource';
 import { GamepadSource } from './GamepadSource';
 import { GamepadPool } from './GamepadPool';
-//import { findXRGamepad } from './XRGamepadUtils';
 
 
 export class InputManager {

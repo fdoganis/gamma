@@ -1,4 +1,3 @@
-// src/input/GamepadPool.ts
 // TODO: rename?
 import type { WebGLRenderer } from 'three';
 import { InputProcessor } from './InputProcessor';

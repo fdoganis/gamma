@@ -1,4 +1,3 @@
-// Game.ts
 import { GameLoop } from './GameLoop';
 import { StateMachine } from './StateMachine';
 import { RenderingManager } from '../rendering/RenderingManager';
@@ -12,7 +11,6 @@ import { SelectCommand } from '../commands/SelectCommand';
 import { GameIntroState } from '../states/GameIntroState';
 import { GameRunningState } from '../states/GameRunningState';
 import { GameOverState } from '../states/GameOverState';
-//import { pulseXRController } from '../input/XRGamepadUtils';
 import { randomTransform } from '../core/Utils';
 import { Haptics } from '../input/XRGamepadUtils';
 import { GamePlacingState } from '../states/GamePlacingState';
@@ -94,4 +92,3 @@ export class Game {
     this.#render.renderer.setAnimationLoop(new GameLoop(this).tick);
   }
 }
-

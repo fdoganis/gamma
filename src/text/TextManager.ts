@@ -8,7 +8,6 @@ export class TextManager {
 
   constructor(engine: ITextEngine) { this.#engine = engine; }
 
-  // TODO: QUESTION: used? rename?
   show(text: string, anchor?: ITransform, style?: TextStyle): TextHandle {
     const handle = this.#engine.create(text, anchor, style);
     this.#labels.set(handle, anchor);

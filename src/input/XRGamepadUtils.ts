@@ -1,5 +1,3 @@
-// src/input/XRGamepadUtils.ts
-
 import type { WebGLRenderer } from 'three';
 import type { XRHandedness } from '../types/XRTypes';
 

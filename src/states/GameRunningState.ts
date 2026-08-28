@@ -1,4 +1,3 @@
-
 import { State } from '../core/State';
 import { SelectCommand } from '../commands/SelectCommand';
 import type { World } from '../world/World';
