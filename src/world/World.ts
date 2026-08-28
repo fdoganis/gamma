@@ -4,7 +4,6 @@ import {
   MeshPhongMaterial,
   CylinderGeometry,
   Vector3,
-  Quaternion,
   Color,
   MathUtils
 } from 'three';
@@ -30,6 +29,9 @@ const PALETTE = ['#F00', '#FF7F00', '#FF0', '#0F0', '#00F', '#4B0082', '#8B00FF'
 const MIN_SPIN = 0.5;
 const MAX_SPIN = Math.PI * 2;
 
+const SPAWN_RADIUS_m = 0.6; // scatter radius on the placed surface
+const CONE_REST_Y_m = 0.1;  // half the cylinder height: rests base-down on the surface
+
 export class World {
   #em: EntityManager<Cone> = new EntityManager<Cone>();
   #sparkles: Sparkles;
@@ -44,17 +46,16 @@ export class World {
     this.#audio = audio;
     this.#sparkles = new Sparkles(this.#root);
 
-    this.#geo = new CylinderGeometry(0, 0.05, 0.2, 32);
-    this.#geo.rotateX(Math.PI / 2);
+    this.#geo = new CylinderGeometry(0, 0.05, 2 * CONE_REST_Y_m, 32); // apex at local +Y: stands upright with no extra rotation
   }
 
   spawn(): { mesh: Mesh<CylinderGeometry, MeshPhongMaterial>; color: Color } {
-    this.#_pos.set(0, 0, -0.3).applyMatrix4(transform.matrixWorld);
-    this.#_quat.setFromRotationMatrix(transform.matrixWorld);
+    const angle = Math.random() * Math.PI * 2;
+    const r = Math.random() * SPAWN_RADIUS_m;
     const material = new MeshPhongMaterial({ color: PALETTE[Math.floor(Math.random() * PALETTE.length)] });
     const mesh = new Mesh(this.#geo, material);
     mesh.position.copy(this.#_pos);
-    mesh.quaternion.copy(this.#_quat);
+    mesh.position.set(Math.cos(angle) * r, CONE_REST_Y_m, Math.sin(angle) * r); // local to #root == local to the placed surface in XR
     this.#root.add(mesh);
 
     // walks up through #root (anchor) too, not just this mesh
