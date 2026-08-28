@@ -29,8 +29,8 @@ export class Game {
 
   constructor() {
     this.#render = new RenderingManager();
-    this.#world = new World(this.#render.anchor);
     this.#audio = new AudioManager(this.#render.camera, new OscillatorSoundEngine()); // or: new ZzfxSoundEngine() 
+    this.#world = new World(this.#render.anchor, this.#audio);
     this.#haptics = new Haptics(this.#render.renderer);
     this.#input = new InputManager(this.#render.renderer, this.#render.scene, this.#render.camera);
     this.#text = new TextManager(new VoxelTextEngine(this.#render.scene, this.#render.camera));
@@ -47,7 +47,7 @@ export class Game {
     const sm = new StateMachine();
     sm.register(GameIntroState, new GameIntroState(sm, this.#text, this.#render.hudAnchor));
     sm.register(GamePlacingState, new GamePlacingState(this.#render, sm));
-    sm.register(GameRunningState, new GameRunningState(this.#world, this.#audio, this.#haptics, sm, this.#text));
+    sm.register(GameRunningState, new GameRunningState(this.#world, this.#audio, this.#haptics, sm, this.#text, this.#render.timerAnchor));
     sm.register(GameOverState, new GameOverState(sm, this.#text, this.#render.hudAnchor));
     sm.start(GameIntroState);
     return sm;

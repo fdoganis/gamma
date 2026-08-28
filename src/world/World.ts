@@ -9,13 +9,17 @@ import {
   MathUtils
 } from 'three';
 
-import type { Object3D } from 'three';
+import type { Object3D, PositionalAudio } from 'three';
 
-import type { ITransform } from '../types/ITransform';
 import { EntityManager } from './EntityManager';
 
 import { Sparkles } from '../animation/Sparkles';
 import type { BurstMode } from '../animation/Sparkles';
+import type { AudioManager } from '../audio/AudioManager';
+
+// mesh typed over its own material (Mesh<TGeometry, TMaterial>) instead of
+// storing material as a second field pointing at the same object.
+type Cone = { mesh: Mesh<CylinderGeometry, MeshPhongMaterial>; axis: Vector3; speed: number; sfx?: PositionalAudio };
 
 type Cone = { mesh: Mesh; material: MeshPhongMaterial; axis: Vector3; speed: number };
 
@@ -27,17 +31,15 @@ const MAX_SPIN = Math.PI * 2;
 export class World {
   #em: EntityManager<Cone> = new EntityManager<Cone>();
   #sparkles: Sparkles;
+  #audio: AudioManager;
   #root: Object3D;
 
   // CONST
   #geo: CylinderGeometry;
 
-  // TMP
-  #_pos: Vector3 = new Vector3();
-  #_quat: Quaternion = new Quaternion();
-
-  constructor(root: Object3D) {
+  constructor(root: Object3D, audio: AudioManager) {
     this.#root = root;
+    this.#audio = audio;
     this.#sparkles = new Sparkles(this.#root);
 
     this.#geo = new CylinderGeometry(0, 0.05, 0.2, 32);
@@ -64,8 +66,17 @@ export class World {
     ).normalize(); // "arbitrary", a fresh random axis per cone, fixed once chosen
     const speed = MathUtils.lerp(MIN_SPIN, MAX_SPIN, hsl.h);
 
-    this.#em.create({ mesh, material, axis, speed });
-    return { mesh: mesh, color: material.color };
+    // TODO: QUESTION: is SFX attached to the last spawned object? can't we have multiple sounds play simultaneously?
+    let sfx: PositionalAudio | undefined;
+    try {
+      sfx = this.#audio.attach(mesh); // permanent: same node for this cone's hit/idle sounds later
+      this.#audio.trigger(sfx, 'spawn');
+    } catch {
+      // Audio node creation can fail in restricted/sandboxed contexts 
+      // a cone should still spawn silently rather than losing the whole action.
+    }
+
+    this.#em.create({ mesh, axis, speed, sfx });
   }
 
   burstSparkles(origin: Vector3, color: Color, mode?: BurstMode): void {
@@ -84,7 +95,8 @@ export class World {
   }
 
   dispose(): void {
-    this.#em.forEach(({ mesh, material }) => {
+    this.#em.forEach(({ mesh, sfx }) => {
+      sfx?.disconnect();
       this.#root.remove(mesh);
       material.dispose();
     });

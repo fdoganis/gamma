@@ -35,7 +35,7 @@ export class GameRunningState extends State {
     const { mesh, color } = this.#world.spawn(cmd.transform);
     const hex = `#${color.getHexString()}`;
     this.#text.show(hex, mesh, { color: hex }); // label reads its own colour
-    this.#audio.playSFX('spawn', mesh); // positional
+    //   this.#audio.playSFX('spawn', mesh); // positional // TODO: QUESTION: why has this been removed?
     this.#world.burstSparkles(mesh.position, color);
     this.#haptics.pulse(cmd.handedness);
   };
