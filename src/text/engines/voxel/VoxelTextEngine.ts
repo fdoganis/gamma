@@ -20,6 +20,7 @@ type VoxelHandle = {
 const CHAR_ADVANCE = GLYPH_W + 1; // 1 column of spacing between glyphs
 const DEFAULT_FLOAT_HEIGHT_m = 0.08;
 const FULL_LABEL_COLOR = '#ff3333';
+const VOXEL_FILL = 0.75; // cube size as a fraction of the grid step: <1 leaves a visible gap between voxels
 
 // scratch — reused by every sync() call, nothing allocated per frame/label
 const _worldPos = new Vector3();
@@ -94,7 +95,7 @@ export class VoxelTextEngine implements ITextEngine {
     _rotMat.lookAt(_eye, _worldPos, UP);
     _quat.setFromRotationMatrix(_rotMat);
 
-    _scaleVec.setScalar(h.visible ? this.#voxelSize : 0);
+    _scaleVec.setScalar(h.visible ? this.#voxelSize * VOXEL_FILL : 0);
     for (let i = 0; i < h.indices.length; i++) {
       _instPos.copy(h.offsets[i]).applyQuaternion(_quat).add(_worldPos);
       _instMat.compose(_instPos, _quat, _scaleVec);
