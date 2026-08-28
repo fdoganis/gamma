@@ -41,7 +41,7 @@ export class RenderingManager {
     this.anchor = new Group();
     this.scene.add(this.anchor);
     this.camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10);
-    this.camera.position.set(0, 1.6, 3);
+    this.camera.position.set(0, 1.6, 3); // NOTE: Once in XR setting the camera is pointless: your head / smartphone screen drives the camera
 
     this.hudAnchor = new Group();
     this.hudAnchor.position.set(0, 0, -0.5); // 0.5m in front of wherever the camera looks
