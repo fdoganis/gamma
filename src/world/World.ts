@@ -21,7 +21,9 @@ import type { AudioManager } from '../audio/AudioManager';
 // storing material as a second field pointing at the same object.
 type Cone = { mesh: Mesh<CylinderGeometry, MeshPhongMaterial>; axis: Vector3; speed: number; sfx?: PositionalAudio };
 
-type Cone = { mesh: Mesh; material: MeshPhongMaterial; axis: Vector3; speed: number };
+// The classic rainbow: ROYGBIV, standard hex values
+// 3-digit hex where it reduces losslessly.
+const PALETTE = ['#F00', '#FF7F00', '#FF0', '#0F0', '#00F', '#4B0082', '#8B00FF']; // red orange yellow green blue indigo violet
 
 
 // rad/s, mapped from the cone's own hue 
@@ -46,10 +48,10 @@ export class World {
     this.#geo.rotateX(Math.PI / 2);
   }
 
-  spawn(transform: ITransform): { mesh: Mesh; color: Color } {
+  spawn(): { mesh: Mesh<CylinderGeometry, MeshPhongMaterial>; color: Color } {
     this.#_pos.set(0, 0, -0.3).applyMatrix4(transform.matrixWorld);
     this.#_quat.setFromRotationMatrix(transform.matrixWorld);
-    const material = new MeshPhongMaterial({ color: Math.random() * 0xffffff });
+    const material = new MeshPhongMaterial({ color: PALETTE[Math.floor(Math.random() * PALETTE.length)] });
     const mesh = new Mesh(this.#geo, material);
     mesh.position.copy(this.#_pos);
     mesh.quaternion.copy(this.#_quat);
@@ -77,6 +79,7 @@ export class World {
     }
 
     this.#em.create({ mesh, axis, speed, sfx });
+    return { mesh, color: material.color };
   }
 
   burstSparkles(origin: Vector3, color: Color, mode?: BurstMode): void {
@@ -98,7 +101,7 @@ export class World {
     this.#em.forEach(({ mesh, sfx }) => {
       sfx?.disconnect();
       this.#root.remove(mesh);
-      material.dispose();
+      mesh.material.dispose();
     });
 
     this.#em.clear();

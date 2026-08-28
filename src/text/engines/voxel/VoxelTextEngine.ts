@@ -1,4 +1,4 @@
-import { BoxGeometry, Matrix4, Vector3, Quaternion, Color } from 'three';
+import { BoxGeometry, Matrix4, Vector3, Quaternion, Color, MeshPhongMaterial } from 'three';
 import type { Scene, PerspectiveCamera } from 'three';
 import type { ITransform } from '../../../types/ITransform';
 import type { ITextEngine, TextStyle } from '../../ITextEngine';
@@ -39,7 +39,7 @@ export class VoxelTextEngine implements ITextEngine {
   constructor(scene: Scene, camera: PerspectiveCamera, voxelSize = 0.008, maxInstances = 1024 * 1024) {
     this.#camera = camera;
     this.#voxelSize = voxelSize;
-    this.#pool = new InstancedPool(scene, new BoxGeometry(1, 1, 1), maxInstances);
+    this.#pool = new InstancedPool(scene, new BoxGeometry(1, 1, 1), maxInstances, new MeshPhongMaterial({ shininess: 200 }));
   }
 
   create(text: string, anchor?: ITransform, style?: TextStyle): VoxelHandle {

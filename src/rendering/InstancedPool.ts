@@ -1,5 +1,5 @@
 import { InstancedMesh, MeshBasicMaterial, Matrix4, Color } from 'three';
-import type { BufferGeometry, Object3D } from 'three';
+import type { BufferGeometry, Material, Object3D } from 'three';
 import { ZERO_SCALE_MATRIX } from '../text/engines/voxel/constants'; // TODO: put constants in a more exposed folder
 
 // Generic bump+free-list allocator over one InstancedMesh: 
@@ -13,14 +13,14 @@ import { ZERO_SCALE_MATRIX } from '../text/engines/voxel/constants'; // TODO: pu
 // this class only knows single indices.
 export class InstancedPool {
   #mesh: InstancedMesh;
-  #material: MeshBasicMaterial;
+  #material: Material;
   #free: number[] = [];
   #nextRaw = 0;
   #capacity: number;
 
-  constructor(parent: Object3D, geometry: BufferGeometry, capacity: number) {
+  constructor(parent: Object3D, geometry: BufferGeometry, capacity: number, material: Material = new MeshBasicMaterial()) {
     this.#capacity = capacity;
-    this.#material = new MeshBasicMaterial();
+    this.#material = material;
     this.#mesh = new InstancedMesh(geometry, this.#material, capacity);
     this.#mesh.count = 0;
     this.#mesh.frustumCulled = false;
