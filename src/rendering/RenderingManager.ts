@@ -8,7 +8,9 @@ import {
   Mesh,
   PlaneGeometry,
   ShadowMaterial,
-  Group
+  Group,
+  NoToneMapping,
+  SRGBColorSpace
 } from 'three';
 import { XRButton } from 'three/addons/webxr/XRButton.js';
 
@@ -23,6 +25,9 @@ export class RenderingManager {
 
   constructor() {
     this.renderer = new WebGLRenderer({ antialias: true, alpha: true });
+    this.renderer.toneMapping = NoToneMapping;
+    this.renderer.outputColorSpace = SRGBColorSpace;
+
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.xr.enabled = true;
@@ -54,21 +59,33 @@ export class RenderingManager {
 
     this.renderer.shadowMap.enabled = true;
 
-    this.scene.add(new AmbientLight(0xffffff, 1.0));
-    const hemi = new HemisphereLight(0xffffff, 0xbbbbff, 3);
-    hemi.position.set(0.5, 1, 0.25);
+    const hemi = new HemisphereLight(0xffffff, 0xffffff, 2);
+    hemi.color.setHSL(0.6, 1, 0.6);
+    hemi.groundColor.setHSL(0.095, 1, 0.75);
+    hemi.position.set(0, 3, 0);
     this.scene.add(hemi);
 
     // Parented to anchor, not scene: 
     // light source and shadow target follow the placement
-    const sun = new DirectionalLight(0xffffff, 3); // also gives Phong voxels a shading gradient
-    sun.position.set(0, 1, 0);
+    const sun = new DirectionalLight(0xffffff, 4); // also gives Phong voxels a shading gradient
+    sun.position.set(0, 2, 0);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(512, 512); // small play area (±1m frustum) — this re-renders every frame, keep it cheap
+    sun.shadow.mapSize.set(1024, 1024); // small play area (±1m frustum) — this re-renders every frame, keep it cheap
     sun.shadow.camera.top = 1; sun.shadow.camera.bottom = -1;
     sun.shadow.camera.right = 1; sun.shadow.camera.left = -1;
     sun.shadow.camera.near = 0.1; sun.shadow.camera.far = 3;
     this.anchor.add(sun, sun.target);
+
+
+    const foreLight = new DirectionalLight(0xfff, 2)
+    foreLight.color.setHSL(0.6, 1, 0.6);
+    foreLight.position.set(2, 2, 4)
+    this.scene.add(foreLight)
+
+    const backLight = new DirectionalLight(0xfff, 4)
+    foreLight.color.setHSL(0.095, 1, 0.75);
+    backLight.position.set(-1, -1, -2)
+    this.scene.add(backLight)
 
     // Invisible: only its shadow renders, so virtual objects appear to cast a shadow
     // onto the real (passthrough) floor. Sized to comfortably cover the spawn disc.
