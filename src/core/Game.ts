@@ -85,6 +85,7 @@ export class Game {
     this.#world.dispose();
     this.#audio.dispose();
     this.#render.dispose();
+    this.#text.dispose();
 
   }
 
