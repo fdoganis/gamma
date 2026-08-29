@@ -6,7 +6,7 @@
 
 // Owns only what's engine-agnostic: mute state. 
 // How a sound is actually produced (e.g. zzfx, an oscillator, loaded samples, a tracker player) 
-// is delegated to SoundEngine 
+// is delegated to ISoundEngine 
 // audio/AudioManager.ts
 import { AudioListener, PositionalAudio } from 'three';
 import type { Object3D, PerspectiveCamera } from 'three';
@@ -33,6 +33,8 @@ export class AudioManager {
   // Non-positional: plays straight through the listener. For cues with no
   // source in the world (UI, stingers).
   playSFX(id: string): void {
+    if (this.#muted) { return; }
+
     const handle = this.#engine.createSource(id, this.context);
     if (!handle) { return; }
     handle.output.connect(this.#listener.getInput());
@@ -56,6 +58,9 @@ export class AudioManager {
   // engine-generated node each call; the previous node disconnects itself
   // on end, so overlapping triggers layer instead of cutting each other off.
   trigger(audio: PositionalAudio, id: string): void {
+    if (this.#muted) { return; }
+
+
     const handle = this.#engine.createSource(id, this.context);
     if (!handle) { return; }
     audio.setNodeSource(handle.output);
@@ -66,6 +71,7 @@ export class AudioManager {
   // One channel, not a pool.
   // Starting a new track stops whatever was playing.
   playBGM(id: string) {
+    if (this.#muted) { return; }
     this.#bgm?.source.stop();
     const handle = this.#engine.createSource(id, this.context);
     if (!handle) { return; }
