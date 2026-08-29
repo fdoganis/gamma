@@ -3,8 +3,7 @@ import type { InputSource } from './InputSource';
 
 export class InputProcessor {
   #sources: InputSource[] = [];
-  #next: Command[] = []; // filled this cycle, becomes 'commands' next cycle
-  commands: Command[] = []; // dispatched this cycle, filled last cycle
+  commands: Command[] = [];
 
   add(source: InputSource) { this.#sources.push(source); }
 
@@ -13,26 +12,11 @@ export class InputProcessor {
     if (i !== -1) this.#sources.splice(i, 1);
   }
 
-
-  // collect() {
-  //   this.commands.length = 0;
-  //   for (const src of this.#sources) {
-  //     src.poll();
-
-  //     for (const cmd of src.queue) {
-  //       this.commands.push(cmd);
-  //     }
-
-  //     src.queue.length = 0;
-  //   }
-  // }
   collect() {
-    // Swap then gather: 'commands' becomes whatever was gathered last cycle
-    [this.commands, this.#next] = [this.#next, this.commands];
-    this.#next.length = 0;
+    this.commands.length = 0;
     for (const src of this.#sources) {
       src.poll();
-      for (const cmd of src.queue) this.#next.push(cmd);
+      for (const cmd of src.queue) this.commands.push(cmd);
       src.queue.length = 0;
     }
   }
