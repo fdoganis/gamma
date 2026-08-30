@@ -21,6 +21,7 @@ export class RenderingManager {
   anchor: Group; // extra node useful for XR placement
   hudAnchor: Group; // child of camera, fixed position/orientation relative to the viewer, for camera-facing text
   timerAnchor: Group; // child of anchor: pinned to the placed surface, not the camera; VoxelTextEngine still billboards it to face the viewer
+  scoreAnchor: Group; // child of anchor: upper-right of the rainbow, world-space
 
 
   constructor() {
@@ -56,6 +57,10 @@ export class RenderingManager {
     this.timerAnchor = new Group();
     this.timerAnchor.position.set(0, 0.4, 0); // 0.4m above the placed surface
     this.anchor.add(this.timerAnchor);
+
+    this.scoreAnchor = new Group();
+    this.scoreAnchor.position.set(0.45, 0.42, -0.15); // upper-right of the rainbow arc
+    this.anchor.add(this.scoreAnchor);
 
     this.renderer.shadowMap.enabled = true;
 

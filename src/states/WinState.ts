@@ -5,6 +5,7 @@ import type { TextManager } from '../text/TextManager';
 import type { TextHandle } from '../text/ITextEngine';
 import { SelectCommand } from '../commands/SelectCommand';
 import { IntroState } from './IntroState';
+import type { Score } from '../core/Score';
 
 // Reached when all 7 rainbow colors are collected before the timer runs out.
 // Placeholder for the "rainbow arc over the unicorn, unicorn freed, next level"
@@ -12,12 +13,14 @@ import { IntroState } from './IntroState';
 export class WinState extends State {
   #sm: ITransition;
   #text: TextManager;
+  #score: Score;
   #message: TextHandle;
 
-  constructor(sm: ITransition, text: TextManager, hudAnchor: ITransform) {
+  constructor(sm: ITransition, text: TextManager, hudAnchor: ITransform, score: Score) {
     super();
     this.#sm = sm;
     this.#text = text;
+    this.#score = score;
     this.#message = text.show('YOU WIN', hudAnchor, { color: '#00ff88', visible: false });
     this.#registerHandlers();
   }
@@ -28,6 +31,9 @@ export class WinState extends State {
 
   #onSelect = () => { this.#sm.change(IntroState); };
 
-  override enter() { this.#text.setVisible(this.#message, true); }
+  override enter() {
+    this.#text.setText(this.#message, `YOU WIN  ${this.#score.value}`);
+    this.#text.setVisible(this.#message, true);
+  }
   override exit() { this.#text.setVisible(this.#message, false); }
 }

@@ -1,5 +1,6 @@
 import { GameLoop } from './GameLoop';
 import { StateMachine } from './StateMachine';
+import { Score } from './Score';
 import { RenderingManager } from '../rendering/RenderingManager';
 import { InputManager } from '../input/InputManager';
 import { AudioManager } from '../audio/AudioManager';
@@ -48,11 +49,12 @@ export class Game {
   // camera, so the running state is testable on plain desktop without WebXR.
   #buildStateMachine(): StateMachine {
     const sm = new StateMachine();
-    sm.register(IntroState, new IntroState(sm, this.#text, this.#render.hudAnchor));
+    const score = new Score();
+    sm.register(IntroState, new IntroState(sm, this.#text, this.#render.hudAnchor, score));
     sm.register(AnchorState, new AnchorState(this.#render, sm));
-    sm.register(RunState, new RunState(this.#world, this.#audio, this.#haptics, sm, this.#text, this.#render.timerAnchor));
-    sm.register(WinState, new WinState(sm, this.#text, this.#render.hudAnchor));
-    sm.register(GameOverState, new GameOverState(sm, this.#text, this.#render.hudAnchor));
+    sm.register(RunState, new RunState(this.#world, this.#audio, this.#haptics, sm, this.#text, this.#render, score));
+    sm.register(WinState, new WinState(sm, this.#text, this.#render.hudAnchor, score));
+    sm.register(GameOverState, new GameOverState(sm, this.#text, this.#render.hudAnchor, score));
 
     const debugRun = 'run' in getQuery();
     if (debugRun) {
