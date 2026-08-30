@@ -4,11 +4,10 @@ import { SelectCommand } from '../commands/SelectCommand';
 import { randomTransform } from '../core/Utils';
 
 
-// Desktop fallback with no natural pose. 
-// Each press gets a fresh, bounded random transform inside the default camera's view
-// (RenderManager starts it at (0,1.6,3) looking at (0,1.6,0)) rather than truly unbounded
-// TODO: use camera pose instead of magic numbers? It create an unneeded dpendency.
-// => expose default values
+// Desktop fallback with no natural pose. There is nothing to aim, so each press
+// emits a debugRandom SelectCommand — states that consume a hit (GameRunningState)
+// treat it as "act on a random target". The transform is still filled with a
+// bounded random pose so states that only change on select keep working.
 export class KeyboardInputSource extends InputSource {
   #key: string;
 
@@ -21,7 +20,7 @@ export class KeyboardInputSource extends InputSource {
   #onKeyDown = (e: KeyboardEvent): void => {
     if (!this.enabled || e.repeat || e.key !== this.#key) return;
     e.preventDefault(); // stop Space from also scrolling the page
-    this.queue.push(new SelectCommand(randomTransform()));
+    this.queue.push(new SelectCommand(randomTransform(), 'none', true));
   };
 
   override dispose(): void {

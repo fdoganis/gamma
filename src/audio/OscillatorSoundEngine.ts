@@ -2,6 +2,7 @@ import type { ISoundEngine, SoundHandle } from './ISoundEngine';
 
 const TONES: Record<string, { frequency: number; duration: number }> = {
   spawn: { frequency: 440, duration: 0.15 },
+  hit: { frequency: 880, duration: 0.12 }, // an octave up, snappier — a collect
 };
 
 

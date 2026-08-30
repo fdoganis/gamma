@@ -1,3 +1,4 @@
+import { Ray, Vector3 } from 'three';
 import { State } from '../core/State';
 import { SelectCommand } from '../commands/SelectCommand';
 import type { World } from '../world/World';
@@ -10,6 +11,11 @@ import type { TextManager } from '../text/TextManager';
 import type { TextHandle } from '../text/ITextEngine';
 
 const ROUND_SECONDS = 45;
+
+// scratch — a select fires rarely, but reuse anyway (matches the codebase style)
+const _origin = new Vector3();
+const _dir = new Vector3();
+const _ray = new Ray();
 
 // The 7 stolen colors of the rainbow (game data — a gnome carries one each).
 const RAINBOW = ['#F00', '#FF7F00', '#FF0', '#0F0', '#00F', '#4B0082', '#8B00FF'];
@@ -24,7 +30,7 @@ const UP_MAX_S = 1.8;
 export class GameRunningState extends State {
   #world: World;
   #audio: AudioManager;
-  #haptics: Haptics; // unused until tap-to-collect returns; keeps Game wiring stable
+  #haptics: Haptics;
   #transition: ITransition;
   #text: TextManager;
   #timerAnchor: ITransform;
@@ -49,9 +55,23 @@ export class GameRunningState extends State {
     this.on(SelectCommand, this.#onSelect);
   }
 
-  #onSelect = (_cmd: SelectCommand) => {
-    /* tap does nothing until the collection milestone */
+  // A select aims a ray (from the source's world pose, −Z) at the live actors.
+  // On a hit the actor is collected (World fires the sparkle + sound); a hit
+  // buzzes the hand that did it. Keyboard has no aim → collect a random actor.
+  // TODO(next): track the 7 collected colours, stop re-spawning collected ones,
+  // win at 7 / lose at 0, and float a score popup via `#labels`.
+  #onSelect = (cmd: SelectCommand) => {
+    const removed = cmd.debugRandom
+      ? this.#world.hitRandom()
+      : this.#world.hit(this.#rayFrom(cmd.transform));
+    if (removed) this.#haptics.pulse(cmd.handedness);
   };
+
+  #rayFrom(t: ITransform): Ray {
+    _origin.setFromMatrixPosition(t.matrixWorld);
+    _dir.set(0, 0, -1).transformDirection(t.matrixWorld);
+    return _ray.set(_origin, _dir);
+  }
 
   #trySpawn() {
     const free = this.#world.freeHoles();

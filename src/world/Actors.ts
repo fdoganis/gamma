@@ -2,11 +2,14 @@
 // despawn. Generic: an actor does not know its color means "a stolen rainbow
 // colour", or why it was told to appear — GameRunningState owns all of that.
 // Backed by the generic EntityManager entity store.
-import { Mesh, MeshPhongMaterial, CylinderGeometry, MathUtils } from 'three';
-import type { Object3D } from 'three';
+import { Mesh, MeshPhongMaterial, CylinderGeometry, MathUtils, Raycaster } from 'three';
+import type { Object3D, Ray, Vector3, Color } from 'three';
 import { EntityManager } from './EntityManager';
 import { easeOutCubic } from '../animation/Easing';
 import type { Hole } from './Hole';
+
+// what a collected actor leaves behind — colour + where it was (for effects / score popups)
+export type RemovedActor = { color: Color; position: Vector3 };
 
 const ACTOR_H_m = 0.12;
 const HIDDEN_Y_m = -0.14; // centre: whole body below the rim and inside the pit (fits a taller unicorn too)
@@ -28,6 +31,7 @@ export class Actors {
   #root: Object3D;
   #em = new EntityManager<Actor>();
   #geo: CylinderGeometry;
+  #raycaster = new Raycaster();
 
   constructor(root: Object3D) {
     this.#root = root;
@@ -53,8 +57,42 @@ export class Actors {
     this.#root.add(mesh);
     mesh.updateWorldMatrix(true, false); // same-frame world pose for callers
 
-    this.#em.create({ mesh, hole, phase: 'rising', phaseT: 0, hold });
+    const id = this.#em.create({ mesh, hole, phase: 'rising', phaseT: 0, hold });
+    mesh.userData.id = id; // so a raycast Intersection maps back to its entity
     return mesh;
+  }
+
+  // Ray hit against live actors; falls back to the nearest actor within
+  // `proximityR` of the ray origin (direct touch — a hand pinch fires with the
+  // fingertip on the body). Returns the entity id, or null on a miss.
+  hitTest(ray: Ray, proximityR: number): number | null {
+    const meshes: Mesh[] = [];
+    let nearId: number | null = null;
+    let nearD = proximityR;
+    this.#em.forEach((a) => {
+      meshes.push(a.mesh);
+      const d = a.mesh.position.distanceTo(ray.origin);
+      if (d < nearD) { nearD = d; nearId = a.id; }
+    });
+    this.#raycaster.set(ray.origin, ray.direction);
+    const rayId = this.#raycaster.intersectObjects(meshes, false)[0]?.object.userData.id as number | undefined;
+    return rayId ?? nearId;
+  }
+
+  // Remove one actor now (a collect / hit). Returns its colour + last position.
+  despawn(id: number): RemovedActor | null {
+    const a = this.#em.find((x) => x.id === id);
+    if (!a) return null;
+    const removed: RemovedActor = { color: a.mesh.material.color.clone(), position: a.mesh.position.clone() };
+    this.#remove(a);
+    return removed;
+  }
+
+  // Collect a random live actor (keyboard fallback — no real aim).
+  despawnAny(): RemovedActor | null {
+    const ids: number[] = [];
+    this.#em.forEach((a) => { ids.push(a.id); });
+    return ids.length ? this.despawn(ids[(Math.random() * ids.length) | 0]) : null;
   }
 
   update(delta: number): void {
