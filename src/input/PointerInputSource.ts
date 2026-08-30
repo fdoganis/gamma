@@ -1,28 +1,26 @@
 // input/PointerInputSource.ts
 import { InputSource } from './InputSource';
 import { SelectCommand } from '../commands/SelectCommand';
-import {
-  Raycaster,
-  Vector2,
-  Vector3,
-  Matrix4,
-  Plane
-} from 'three';
+import { Raycaster, Vector2, Vector3, Matrix4 } from 'three';
 
 import type {
   WebGLRenderer,
   PerspectiveCamera
 } from 'three';
 
-// Desktop/non-XR fallback. A 2D pointer position is real spatial
-// information, so it's ray-cast onto a ground plane rather than randomised.
+const UP = new Vector3(0, 1, 0);
+const _target = new Vector3();
+
+// Desktop / non-XR fallback. A screen click is a real aim, so it becomes a
+// camera→cursor ray encoded in the command's transform: the matrix is placed at
+// the camera and oriented so its local −Z is the pick direction (the same
+// convention an XR controller's targetRay uses). GameRunningState reads it back
+// as origin + −Z for hit-testing.
 export class PointerInputSource extends InputSource {
   #renderer: WebGLRenderer;
   #camera: PerspectiveCamera;
   #raycaster = new Raycaster();
   #ndc = new Vector2();
-  #ground = new Plane(new Vector3(0, 0, 1), 0); // plane z = 0
-  #hit = new Vector3();
 
   constructor(renderer: WebGLRenderer, camera: PerspectiveCamera) {
     super();
@@ -39,8 +37,10 @@ export class PointerInputSource extends InputSource {
       -((e.clientY - rect.top) / rect.height) * 2 + 1
     );
     this.#raycaster.setFromCamera(this.#ndc, this.#camera);
-    if (!this.#raycaster.ray.intersectPlane(this.#ground, this.#hit)) return;
-    const matrixWorld = new Matrix4().makeTranslation(this.#hit.x, this.#hit.y, this.#hit.z);
+    const { origin, direction } = this.#raycaster.ray;
+    const matrixWorld = new Matrix4()
+      .lookAt(origin, _target.copy(origin).add(direction), UP)
+      .setPosition(origin);
     this.queue.push(new SelectCommand({ matrixWorld }));
   };
 
