@@ -32,6 +32,11 @@ export class Rainbow {
     this.#arcs[i]?.material.color.set(colorHex);
   }
 
+  // Back to gray — a collected color was snatched back (unicorn penalty).
+  unlight(i: number): void {
+    this.#arcs[i]?.material.color.setHex(GRAY);
+  }
+
   reset(): void {
     for (const arc of this.#arcs) arc.material.color.setHex(GRAY);
   }

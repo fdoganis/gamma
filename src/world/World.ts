@@ -2,7 +2,8 @@
 // the bodies that rise from it (Actors), the Rainbow gauge, and the Sparkles
 // pool — all parented to the placed anchor. Adds only the non-positional cues;
 // no game rules (cadence, colors, scoring) live here.
-import type { Object3D, Vector3, Color, Ray } from 'three';
+import { Color } from 'three';
+import type { Object3D, Vector3, Ray } from 'three';
 
 import { Gameboard } from './Gameboard';
 import { Actors } from './Actors';
@@ -13,6 +14,7 @@ import type { BurstMode } from '../animation/Sparkles';
 import type { AudioManager } from '../audio/AudioManager';
 
 const PROXIMITY_R_m = 0.08; // hand/touch fallback radius when the ray misses (actor r = 0.05)
+const DECOY_PUFF = new Color(0xd8899b); // pink "ow" burst when the unicorn is wrongly tapped
 
 export class World {
   #board: Gameboard;
@@ -35,10 +37,12 @@ export class World {
   activeTags(): number[] { return this.#actors.activeTags(); }
 
   lightRainbow(i: number, colorHex: string): void { this.#rainbow.light(i, colorHex); }
+  unlightRainbow(i: number): void { this.#rainbow.unlight(i); }
 
   // Raise a body of `colorHex` from `hole`, up for `hold` seconds, carrying `tag`.
-  spawnAtHole(hole: number, colorHex: string, hold: number, tag: number): void {
-    const mesh = this.#actors.spawn(this.#board.holeAt(hole), colorHex, hold, tag);
+  // `decoy` gives it the unicorn's pink horn and makes a tap non-destructive.
+  spawnAtHole(hole: number, colorHex: string, hold: number, tag: number, decoy = false): void {
+    const mesh = this.#actors.spawn(this.#board.holeAt(hole), colorHex, hold, tag, decoy);
     if (!mesh) return;
     try {
       this.#audio.playSFX('spawn');
@@ -51,11 +55,18 @@ export class World {
     this.#sparkles.burst(origin, color, mode);
   }
 
-  // Aim a ray at the live actors; on a hit, remove that actor and fire the
-  // collect effect. Returns { tag, color, position } or null.
+  // Aim a ray at the live actors. A normal body is removed and the collect
+  // effect fires. A decoy (unicorn) is left standing — only a pink puff plays —
+  // and the hit is still reported so RunState can run its penalty. Returns
+  // { tag, color, position } or null.
   hit(ray: Ray): RemovedActor | null {
-    const id = this.#actors.hitTest(ray, PROXIMITY_R_m);
-    return id === null ? null : this.#collect(this.#actors.despawn(id));
+    const h = this.#actors.hitTest(ray, PROXIMITY_R_m);
+    if (!h) return null;
+    if (h.decoy) {
+      this.#sparkles.burst(h.position, DECOY_PUFF, 'explode');
+      return { tag: h.tag, color: DECOY_PUFF, position: h.position };
+    }
+    return this.#collect(this.#actors.despawn(h.id));
   }
 
   // Collect a random live actor — keyboard fallback with no real aim.

@@ -26,6 +26,16 @@ const MAX_ACTIVE = 5;
 const UP_MIN_S = 0.7;
 const UP_MAX_S = 1.8;
 
+// The unicorn: a decoy that must NOT be tapped. Carries a sentinel tag so it
+// never collides with a rainbow index; peeks longer than a gnome (more time to
+// misfire); at most one at a time.
+const UNICORN_HEX = '#f3ead7'; // cream
+const UNICORN_TAG = -1;
+const UNICORN_CHANCE = 0.12;   // roll per spawn tick when a hole is free and none is up
+const UNICORN_UP_MIN_S = 1.5;
+const UNICORN_UP_MAX_S = 2.5;
+const UNICORN_PENALTY_PTS = 200; // docked only when there's no collected color to snatch back
+
 // Scoring
 const POINTS_PER_STREAK = 100;   // k-th unbroken collect scores k * this
 const TIME_BONUS_PER_S = 50;     // leftover seconds → points on a win
@@ -55,6 +65,7 @@ export class RunState extends State {
   #spawnCooldown = 0;
   #streak = 0;                    // consecutive collects with no actor sinking unhit
   #collected = new Set<number>(); // rainbow indices retrieved this round
+  #order: number[] = [];          // same indices in collect order — the unicorn snatches the last one back
   #popups: Popup[] = [];
   #timerLabel: TextHandle | null = null;
   #scoreLabel: TextHandle | null = null;
@@ -77,9 +88,10 @@ export class RunState extends State {
   }
 
   // A select aims a ray (source world pose, −Z) at the live actors; keyboard has
-  // no aim → collect a random actor. A hit: buzz, score streak * 100, float a
-  // "+N" popup, and (first time for a color) light its rainbow arc. All 7 → win,
-  // with a leftover-time bonus.
+  // no aim → collect a random actor. A hit buzzes either way. The unicorn is the
+  // penalty path; otherwise: score streak * 100, float a "+N" popup, and (first
+  // time for a color) light its rainbow arc. All 7 → win, with a leftover-time
+  // bonus.
   #onSelect = (cmd: SelectCommand) => {
     const removed = cmd.debugRandom
       ? this.#world.hitRandom()
@@ -87,6 +99,9 @@ export class RunState extends State {
     if (!removed) return;
 
     this.#haptics.pulse(cmd.handedness);
+
+    if (removed.tag === UNICORN_TAG) { this.#hitUnicorn(removed.position); return; }
+
     this.#streak += 1;
     const pts = this.#streak * POINTS_PER_STREAK;
     this.#score.add(pts);
@@ -95,6 +110,7 @@ export class RunState extends State {
 
     if (!this.#collected.has(removed.tag)) {
       this.#collected.add(removed.tag);
+      this.#order.push(removed.tag);
       this.#world.lightRainbow(removed.tag, RAINBOW[removed.tag]);
       if (this.#collected.size === RAINBOW.length) {
         this.#score.add(Math.max(0, Math.ceil(this.#timeLeft)) * TIME_BONUS_PER_S);
@@ -102,6 +118,23 @@ export class RunState extends State {
       }
     }
   };
+
+  // Tapped the decoy. Break the streak, and snatch the most-recently collected
+  // color back (its arc goes gray and it can spawn again); with nothing to
+  // snatch, dock points instead. Level-scaled harsher later.
+  #hitUnicorn(pos: Vector3) {
+    this.#streak = 0;
+    const lost = this.#order.pop();
+    if (lost !== undefined) {
+      this.#collected.delete(lost);
+      this.#world.unlightRainbow(lost);
+      this.#spawnPopup(pos, UNICORN_HEX, -1); // "-1" arc, next to the graying arc
+    } else {
+      this.#score.add(-UNICORN_PENALTY_PTS);
+      this.#text.setText(this.#scoreLabel!, String(this.#score.value));
+      this.#spawnPopup(pos, UNICORN_HEX, -UNICORN_PENALTY_PTS);
+    }
+  }
 
   #rayFrom(t: ITransform): Ray {
     _origin.setFromMatrixPosition(t.matrixWorld);
@@ -115,7 +148,7 @@ export class RunState extends State {
     const obj = new Object3D();
     obj.position.copy(localPos);
     this.#render.anchor.add(obj);
-    const handle = this.#text.show(`+${pts}`, obj, { color: colorHex });
+    const handle = this.#text.show(pts < 0 ? `${pts}` : `+${pts}`, obj, { color: colorHex });
     this.#popups.push({ handle, obj, t: 0 });
   }
 
@@ -150,6 +183,16 @@ export class RunState extends State {
     this.#world.spawnAtHole(hole, RAINBOW[tag], UP_MIN_S + Math.random() * (UP_MAX_S - UP_MIN_S), tag);
   }
 
+  #tryUnicorn() {
+    if (this.#world.activeTags().includes(UNICORN_TAG)) return; // one at a time
+    if (Math.random() >= UNICORN_CHANCE) return;
+    const free = this.#world.freeHoles();
+    if (!free.length) return;
+    const hole = free[(Math.random() * free.length) | 0];
+    const hold = UNICORN_UP_MIN_S + Math.random() * (UNICORN_UP_MAX_S - UNICORN_UP_MIN_S);
+    this.#world.spawnAtHole(hole, UNICORN_HEX, hold, UNICORN_TAG, true);
+  }
+
   override update(delta: number) {
     if (this.#world.update(delta) > 0) this.#streak = 0; // an actor sank unhit
     this.#advancePopups(delta);
@@ -159,6 +202,7 @@ export class RunState extends State {
       this.#spawnCooldown = SPAWN_EVERY_S + Math.random() * SPAWN_JITTER_S;
       this.#trySpawn();
       if (Math.random() < 0.3) this.#trySpawn(); // sometimes several at once
+      this.#tryUnicorn();
     }
 
     this.#timeLeft -= delta;
@@ -179,6 +223,7 @@ export class RunState extends State {
     this.#spawnCooldown = SPAWN_EVERY_S;
     this.#streak = 0;
     this.#collected.clear();
+    this.#order.length = 0;
     this.#world.reset();
     this.#timerLabel = this.#text.show(String(ROUND_SECONDS), this.#render.timerAnchor, { color: '#ffffff' });
     this.#scoreLabel = this.#text.show(String(this.#score.value), this.#render.scoreAnchor, { color: '#ffffff' });

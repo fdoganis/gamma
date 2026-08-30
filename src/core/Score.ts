@@ -5,6 +5,6 @@ export class Score {
   #value = 0;
 
   get value(): number { return this.#value; }
-  add(n: number): void { this.#value += n; }
+  add(n: number): void { this.#value = Math.max(0, this.#value + n); } // n < 0 for the unicorn penalty; never goes negative
   reset(): void { this.#value = 0; }
 }
