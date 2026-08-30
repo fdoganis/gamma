@@ -22,19 +22,19 @@ export type BurstMode = 'explode' | 'converge'; // TODO: replace with a better e
 
 // A fixed pool, reused for every burst, nothing allocated per spawn beyond a few per-burst scratch vectors
 // Two groups, matching the reference: a larger set that takes on the
-// spawning cone's own colour, and a smaller fixed-color accent for glint.
+// spawning cone's own color, and a smaller fixed-color accent for glint.
 
 // One shared InstancedPool backs every particle in both groups — allocated
 // once here, held for Sparkles' whole lifetime, never freed/reallocated:
 // burst() just rewrites the same indices' matrices, same fixed-pool
-// behaviour as before, now one draw call instead of 35 Mesh objects.
+// behavior as before, now one draw call instead of 35 Mesh objects.
 
 type ParticleGroup = {
   particles: Particle[];
-  color: Color;         // current colour for the group; matchColor groups repaint this on burst
+  color: Color;         // current color for the group; matchColor groups repaint this on burst
   scale: number;
   ease: Ease;
-  matchColor: boolean;           // recolour to the spawning cone each burst, or stay fixed
+  matchColor: boolean;           // recolor to the spawning cone each burst, or stay fixed
 };
 
 // CONST

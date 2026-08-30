@@ -1,6 +1,6 @@
 // Bodies that emerge straight up out of a Hole, hold, then sink back down and
 // despawn. Generic: an actor does not know its color means "a stolen rainbow
-// colour", or why it was told to appear — RunState owns all of that.
+// color", or why it was told to appear — RunState owns all of that.
 // Backed by the generic EntityManager entity store.
 import { Mesh, MeshPhongMaterial, CylinderGeometry, MathUtils, Raycaster } from 'three';
 import type { Object3D, Ray, Vector3, Color } from 'three';
@@ -9,12 +9,12 @@ import { easeOutCubic } from '../animation/Easing';
 import type { Hole } from './Hole';
 
 // what a collected actor leaves behind: its caller-supplied `tag` (opaque here —
-// RunState uses it for the rainbow index) plus colour + position for effects.
+// RunState uses it for the rainbow index) plus color + position for effects.
 export type RemovedActor = { tag: number; color: Color; position: Vector3 };
 
 const ACTOR_H_m = 0.12;
-const HIDDEN_Y_m = -0.14; // centre: whole body below the rim and inside the pit (fits a taller unicorn too)
-const PEEK_Y_m = 0.06;    // centre: clearly above the occluder plane, so a risen body is never culled
+const HIDDEN_Y_m = -0.14; // center: whole body below the rim and inside the pit (fits a taller unicorn too)
+const PEEK_Y_m = 0.06;    // center: clearly above the occluder plane, so a risen body is never culled
 const RISE_S = 0.25;
 const SINK_S = 0.22;
 
@@ -23,7 +23,7 @@ type Phase = 'rising' | 'holding' | 'sinking';
 type Actor = {
   mesh: Mesh<CylinderGeometry, MeshPhongMaterial>;
   hole: Hole;
-  tag: number;    // opaque caller id (RunState: rainbow colour index)
+  tag: number;    // opaque caller id (RunState: rainbow color index)
   phase: Phase;
   phaseT: number; // seconds spent in the current phase
   hold: number;   // seconds to stay up once risen
@@ -47,7 +47,7 @@ export class Actors {
   }
 
   // Rainbow indices of the actors currently alive (so RunState can keep one
-  // actor per colour).
+  // actor per color).
   activeTags(): number[] {
     const tags: number[] = [];
     this.#em.forEach((a) => { tags.push(a.tag); });
@@ -93,7 +93,7 @@ export class Actors {
     return nearId;
   }
 
-  // Remove one actor now (a collect / hit). Returns its tag + colour + last position.
+  // Remove one actor now (a collect / hit). Returns its tag + color + last position.
   despawn(id: number): RemovedActor | null {
     const a = this.#em.find((x) => x.id === id);
     if (!a) return null;

@@ -6,7 +6,7 @@
 //
 // The occluder is what sells the illusion in passthrough AR: it writes depth
 // across the "table", so anything below the surface (outside a hole) is hidden.
-// It writes no colour. On desktop / the WebXR emulator there is no real table,
+// It writes no color. On desktop / the WebXR emulator there is no real table,
 // so the holes read as dark shapes in a void — that is expected.
 import {
   Mesh,

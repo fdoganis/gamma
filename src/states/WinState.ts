@@ -6,7 +6,7 @@ import type { TextHandle } from '../text/ITextEngine';
 import { SelectCommand } from '../commands/SelectCommand';
 import { IntroState } from './IntroState';
 
-// Reached when all 7 rainbow colours are collected before the timer runs out.
+// Reached when all 7 rainbow colors are collected before the timer runs out.
 // Placeholder for the "rainbow arc over the unicorn, unicorn freed, next level"
 // sequence (see GNOMES.md §5.3 / §6).
 export class WinState extends State {

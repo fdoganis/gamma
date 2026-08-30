@@ -60,7 +60,7 @@ export class RunState extends State {
 
   // A select aims a ray (source world pose, −Z) at the live actors; keyboard has
   // no aim → collect a random actor. On a hit: buzz the hand, and the first time
-  // a colour is retrieved, light its rainbow arc. All 7 → win.
+  // a color is retrieved, light its rainbow arc. All 7 → win.
   #onSelect = (cmd: SelectCommand) => {
     const removed = cmd.debugRandom
       ? this.#world.hitRandom()
@@ -83,7 +83,7 @@ export class RunState extends State {
 
   #trySpawn() {
     const free = this.#world.freeHoles();
-    // one actor per colour at a time; a collected colour never returns
+    // one actor per color at a time; a collected color never returns
     const busy = new Set(this.#world.activeTags());
     const avail: number[] = [];
     for (let i = 0; i < RAINBOW.length; i++) {

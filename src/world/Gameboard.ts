@@ -3,7 +3,7 @@
 import type { Object3D } from 'three';
 import { Hole } from './Hole';
 
-// Two crosses (Left/Up/Right/Down each), centred at ±CROSS_CENTER_X_m — easy taps,
+// Two crosses (Left/Up/Right/Down each), centered at ±CROSS_CENTER_X_m — easy taps,
 // and maps onto a gamepad d-pad + face buttons if a pad fallback is ever added.
 const CROSS_CENTER_X_m = 0.28;
 const CROSS_ARM_m = 0.13;

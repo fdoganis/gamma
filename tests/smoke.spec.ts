@@ -31,7 +31,7 @@ test('boots, renders, and animates', async ({ page }) => {
 });
 
 // Space is the keyboard fallback for "select": in the running state it collects a
-// random actor. Spamming it long enough collects all 7 colours → WinState (a
+// random actor. Spamming it long enough collects all 7 colors → WinState (a
 // valid, static end screen), so this only checks the path stays healthy under
 // heavy repeats (a real "was collected / did win" assertion needs IWER — see GNOMES.md).
 test('repeated Space collects stay healthy through a win', async ({ page }) => {

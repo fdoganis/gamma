@@ -12,7 +12,7 @@ import { UP } from './constants';
 // label, same class Sparkles now uses.
 type VoxelHandle = {
   indices: number[];
-  offsets: Vector3[]; // local, pre-billboard, centred on the label's own origin — parallel to indices
+  offsets: Vector3[]; // local, pre-billboard, centered on the label's own origin — parallel to indices
   floatHeight: number;
   visible: boolean;
   facing: Quaternion; // current (smoothed) orientation; slerped toward the camera-facing target each sync

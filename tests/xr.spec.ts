@@ -15,7 +15,7 @@ for (const cx of [-CX, CX])
 // controller orientation with local −Z pointing straight down (−Y)
 const AIM_DOWN = { x: -Math.SQRT1_2, y: 0, z: 0, w: Math.SQRT1_2 };
 
-// rainbow band on screen (static geometry; only changes colour on a collect)
+// rainbow band on screen (static geometry; only changes color on a collect)
 const RAINBOW_BAND = { x: 300, y: 250, width: 400, height: 120 };
 
 test('emulated controller ray selects collect actors and fill the rainbow', async ({ page }) => {
@@ -57,7 +57,7 @@ test('emulated controller ray selects collect actors and fill the rainbow', asyn
   const before = await page.screenshot({ clip: RAINBOW_BAND });
 
   // 4. sweep the holes, firing a ray select straight down at each; enough passes
-  //    that every colour gets caught while it's up
+  //    that every color gets caught while it's up
   for (let round = 0; round < 8; round++) {
     for (const h of HOLES) {
       await page.evaluate(async ({ h, aim }) => {
@@ -75,7 +75,7 @@ test('emulated controller ray selects collect actors and fill the rainbow', asyn
 
   const after = await page.screenshot({ clip: RAINBOW_BAND });
 
-  // the rainbow band went from all-grey to coloured ⇒ ray selects landed collects
+  // the rainbow band went from all-gray to colored ⇒ ray selects landed collects
   expect(Buffer.compare(before, after), 'rainbow band changed (arcs lit by ray selects)').not.toBe(0);
   expect(problems, 'no page errors').toEqual([]);
 });
