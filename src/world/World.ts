@@ -1,12 +1,13 @@
-// Facade over the scene pieces GameRunningState talks to: the socket grid
-// (Gameboard), the bodies that rise from it (Actors), and the Sparkles pool —
-// all parented to the placed anchor. Adds only the non-positional spawn cue; no
-// game rules (cadence, colors, scoring) live here.
+// Facade over the scene pieces RunState talks to: the socket grid (Gameboard),
+// the bodies that rise from it (Actors), the Rainbow gauge, and the Sparkles
+// pool — all parented to the placed anchor. Adds only the non-positional cues;
+// no game rules (cadence, colors, scoring) live here.
 import type { Object3D, Vector3, Color, Ray } from 'three';
 
 import { Gameboard } from './Gameboard';
 import { Actors } from './Actors';
 import type { RemovedActor } from './Actors';
+import { Rainbow } from './Rainbow';
 import { Sparkles } from '../animation/Sparkles';
 import type { BurstMode } from '../animation/Sparkles';
 import type { AudioManager } from '../audio/AudioManager';
@@ -16,6 +17,7 @@ const PROXIMITY_R_m = 0.08; // hand/touch fallback radius when the ray misses (a
 export class World {
   #board: Gameboard;
   #actors: Actors;
+  #rainbow: Rainbow;
   #sparkles: Sparkles;
   #audio: AudioManager;
 
@@ -23,16 +25,20 @@ export class World {
     this.#audio = audio;
     this.#board = new Gameboard(root);
     this.#actors = new Actors(root);
+    this.#rainbow = new Rainbow(root);
     this.#sparkles = new Sparkles(root);
   }
 
   get holeCount(): number { return this.#board.holeCount; }
   get activeCount(): number { return this.#actors.count; }
   freeHoles(): number[] { return this.#board.freeHoles(); }
+  activeTags(): number[] { return this.#actors.activeTags(); }
 
-  // Raise a body of `colorHex` from `hole`, up for `hold` seconds.
-  spawnAtHole(hole: number, colorHex: string, hold: number): void {
-    const mesh = this.#actors.spawn(this.#board.holeAt(hole), colorHex, hold);
+  lightRainbow(i: number, colorHex: string): void { this.#rainbow.light(i, colorHex); }
+
+  // Raise a body of `colorHex` from `hole`, up for `hold` seconds, carrying `tag`.
+  spawnAtHole(hole: number, colorHex: string, hold: number, tag: number): void {
+    const mesh = this.#actors.spawn(this.#board.holeAt(hole), colorHex, hold, tag);
     if (!mesh) return;
     try {
       this.#audio.playSFX('spawn');
@@ -46,7 +52,7 @@ export class World {
   }
 
   // Aim a ray at the live actors; on a hit, remove that actor and fire the
-  // collect effect. Returns its colour + position (for scoring later) or null.
+  // collect effect. Returns { tag, color, position } or null.
   hit(ray: Ray): RemovedActor | null {
     const id = this.#actors.hitTest(ray, PROXIMITY_R_m);
     return id === null ? null : this.#collect(this.#actors.despawn(id));
@@ -76,11 +82,13 @@ export class World {
   reset(): void {
     this.#actors.clear();
     this.#board.reset();
+    this.#rainbow.reset();
   }
 
   dispose(): void {
     this.#actors.dispose();
     this.#board.dispose();
+    this.#rainbow.dispose();
     this.#sparkles.dispose();
   }
 }

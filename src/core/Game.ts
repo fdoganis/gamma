@@ -9,11 +9,12 @@ import { OscillatorSoundEngine } from '../audio/OscillatorSoundEngine';
 import { World } from '../world/World';
 import { SelectCommand } from '../commands/SelectCommand';
 import { IntroState } from '../states/IntroState';
+import { AnchorState } from '../states/AnchorState';
 import { RunState } from '../states/RunState';
+import { WinState } from '../states/WinState';
 import { GameOverState } from '../states/GameOverState';
 import { randomTransform, getQuery } from '../core/Utils';
 import { Haptics } from '../input/XRGamepadUtils';
-import { AnchorState } from '../states/AnchorState';
 import { TextManager } from '../text/TextManager';
 import { VoxelTextEngine } from '../text/engines/voxel/VoxelTextEngine';
 
@@ -50,6 +51,7 @@ export class Game {
     sm.register(IntroState, new IntroState(sm, this.#text, this.#render.hudAnchor));
     sm.register(AnchorState, new AnchorState(this.#render, sm));
     sm.register(RunState, new RunState(this.#world, this.#audio, this.#haptics, sm, this.#text, this.#render.timerAnchor));
+    sm.register(WinState, new WinState(sm, this.#text, this.#render.hudAnchor));
     sm.register(GameOverState, new GameOverState(sm, this.#text, this.#render.hudAnchor));
 
     const debugRun = 'run' in getQuery();

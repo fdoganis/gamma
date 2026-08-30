@@ -1,6 +1,6 @@
 // Bodies that emerge straight up out of a Hole, hold, then sink back down and
 // despawn. Generic: an actor does not know its color means "a stolen rainbow
-// colour", or why it was told to appear — GameRunningState owns all of that.
+// colour", or why it was told to appear — RunState owns all of that.
 // Backed by the generic EntityManager entity store.
 import { Mesh, MeshPhongMaterial, CylinderGeometry, MathUtils, Raycaster } from 'three';
 import type { Object3D, Ray, Vector3, Color } from 'three';
@@ -8,8 +8,9 @@ import { EntityManager } from './EntityManager';
 import { easeOutCubic } from '../animation/Easing';
 import type { Hole } from './Hole';
 
-// what a collected actor leaves behind — colour + where it was (for effects / score popups)
-export type RemovedActor = { color: Color; position: Vector3 };
+// what a collected actor leaves behind: its caller-supplied `tag` (opaque here —
+// RunState uses it for the rainbow index) plus colour + position for effects.
+export type RemovedActor = { tag: number; color: Color; position: Vector3 };
 
 const ACTOR_H_m = 0.12;
 const HIDDEN_Y_m = -0.14; // centre: whole body below the rim and inside the pit (fits a taller unicorn too)
@@ -22,6 +23,7 @@ type Phase = 'rising' | 'holding' | 'sinking';
 type Actor = {
   mesh: Mesh<CylinderGeometry, MeshPhongMaterial>;
   hole: Hole;
+  tag: number;    // opaque caller id (RunState: rainbow colour index)
   phase: Phase;
   phaseT: number; // seconds spent in the current phase
   hold: number;   // seconds to stay up once risen
@@ -44,10 +46,18 @@ export class Actors {
     return n;
   }
 
-  // Raise a body of `colorHex` from `hole`, up for `hold` seconds; it sinks and
-  // despawns on its own. Returns the mesh (for audio / hit-test) or null if the
-  // hole is already taken.
-  spawn(hole: Hole, colorHex: string, hold: number): Mesh<CylinderGeometry, MeshPhongMaterial> | null {
+  // Rainbow indices of the actors currently alive (so RunState can keep one
+  // actor per colour).
+  activeTags(): number[] {
+    const tags: number[] = [];
+    this.#em.forEach((a) => { tags.push(a.tag); });
+    return tags;
+  }
+
+  // Raise a body of `colorHex` from `hole`, up for `hold` seconds, carrying
+  // `tag`; it sinks and despawns on its own. Returns the mesh (for audio /
+  // hit-test) or null if the hole is already taken.
+  spawn(hole: Hole, colorHex: string, hold: number, tag: number): Mesh<CylinderGeometry, MeshPhongMaterial> | null {
     if (!hole.free) return null;
     hole.free = false;
 
@@ -57,8 +67,7 @@ export class Actors {
     this.#root.add(mesh);
     mesh.updateWorldMatrix(true, false); // same-frame world pose for callers
 
-    const id = this.#em.create({ mesh, hole, phase: 'rising', phaseT: 0, hold });
-    mesh.userData.id = id; // so a raycast Intersection maps back to its entity
+    this.#em.create({ mesh, hole, tag, phase: 'rising', phaseT: 0, hold });
     return mesh;
   }
 
@@ -75,15 +84,20 @@ export class Actors {
       if (d < nearD) { nearD = d; nearId = a.id; }
     });
     this.#raycaster.set(ray.origin, ray.direction);
-    const rayId = this.#raycaster.intersectObjects(meshes, false)[0]?.object.userData.id as number | undefined;
-    return rayId ?? nearId;
+    const hitMesh = this.#raycaster.intersectObjects(meshes, false)[0]?.object;
+    if (hitMesh) {
+      let hitId: number | null = null;
+      this.#em.forEach((a) => { if (a.mesh === hitMesh) hitId = a.id; });
+      if (hitId !== null) return hitId;
+    }
+    return nearId;
   }
 
-  // Remove one actor now (a collect / hit). Returns its colour + last position.
+  // Remove one actor now (a collect / hit). Returns its tag + colour + last position.
   despawn(id: number): RemovedActor | null {
     const a = this.#em.find((x) => x.id === id);
     if (!a) return null;
-    const removed: RemovedActor = { color: a.mesh.material.color.clone(), position: a.mesh.position.clone() };
+    const removed: RemovedActor = { tag: a.tag, color: a.mesh.material.color.clone(), position: a.mesh.position.clone() };
     this.#remove(a);
     return removed;
   }

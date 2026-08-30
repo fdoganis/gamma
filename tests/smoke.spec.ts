@@ -31,9 +31,10 @@ test('boots, renders, and animates', async ({ page }) => {
 });
 
 // Space is the keyboard fallback for "select": in the running state it collects a
-// random actor. This only checks the path stays healthy under repeated presses
-// (a real "an actor was collected" assertion needs IWER — see GNOMES.md).
-test('repeated Space collects stay healthy', async ({ page }) => {
+// random actor. Spamming it long enough collects all 7 colours → WinState (a
+// valid, static end screen), so this only checks the path stays healthy under
+// heavy repeats (a real "was collected / did win" assertion needs IWER — see GNOMES.md).
+test('repeated Space collects stay healthy through a win', async ({ page }) => {
   const problems: string[] = [];
   page.on('pageerror', (e) => problems.push(`pageerror: ${e}`));
   page.on('console', (m) => { if (m.type() === 'error') problems.push(`console.error: ${m.text()}`); });
@@ -42,14 +43,12 @@ test('repeated Space collects stay healthy', async ({ page }) => {
   await expect(page.locator('canvas')).toBeVisible();
   await page.waitForTimeout(2500); // let a few actors rise
 
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 30; i++) {
     await page.keyboard.press('Space');
     await page.waitForTimeout(200);
   }
+  await page.waitForTimeout(1000);
 
-  const shot = await page.locator('canvas').screenshot();
-  await page.waitForTimeout(1500);
-  const shot2 = await page.locator('canvas').screenshot();
-  expect(Buffer.compare(shot, shot2), 'still animating after Space presses').not.toBe(0);
-  expect(problems, 'no page errors from Space collects').toEqual([]);
+  expect(problems, 'no page errors from Space collects / the win transition').toEqual([]);
+  await expect(page.locator('canvas')).toBeVisible();
 });
