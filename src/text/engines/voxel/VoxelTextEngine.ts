@@ -13,6 +13,7 @@ import { UP } from './constants';
 type VoxelHandle = {
   indices: number[];
   offsets: Vector3[]; // local, pre-billboard, centered on the label's own origin — parallel to indices
+  color: string;      // kept so setText() can repaint reused pool slots (they carry the last owner's color)
   floatHeight: number;
   visible: boolean;
   facing: Quaternion; // current (smoothed) orientation; slerped toward the camera-facing target each sync
@@ -48,15 +49,16 @@ export class VoxelTextEngine implements ITextEngine {
   }
 
   create(text: string, anchor?: ITransform, style?: TextStyle): VoxelHandle {
+    const color = style?.color ?? '#ffffff';
     const offsets = this.#layout(text);
     if (this.#pool.freeCount < offsets.length) {
       this.#reportFull(anchor);
-      return { indices: [], offsets: [], floatHeight: DEFAULT_FLOAT_HEIGHT_m, visible: true, facing: new Quaternion(), hasFacing: false };
+      return { indices: [], offsets: [], color, floatHeight: DEFAULT_FLOAT_HEIGHT_m, visible: true, facing: new Quaternion(), hasFacing: false };
     }
     const indices = offsets.map(() => this.#pool.allocate()!); // capacity just checked above
-    this.#paint(indices, style?.color ?? '#ffffff');
+    this.#paint(indices, color);
 
-    const handle: VoxelHandle = { indices, offsets, floatHeight: DEFAULT_FLOAT_HEIGHT_m, visible: style?.visible ?? true, facing: new Quaternion(), hasFacing: false };
+    const handle: VoxelHandle = { indices, offsets, color, floatHeight: DEFAULT_FLOAT_HEIGHT_m, visible: style?.visible ?? true, facing: new Quaternion(), hasFacing: false };
     if (anchor) this.sync(handle, anchor, 0);
     return handle;
   }
@@ -72,6 +74,7 @@ export class VoxelTextEngine implements ITextEngine {
       h.indices.push(i);
     }
     h.offsets = offsets.slice(0, h.indices.length);
+    this.#paint(h.indices, h.color); // reused pool slots keep their last owner's color — repaint every time
   }
 
   setVisible(handle: unknown, visible: boolean): void {
@@ -135,7 +138,7 @@ export class VoxelTextEngine implements ITextEngine {
     const indices = offsets.map(() => this.#pool.allocate()!);
     this.#paint(indices, FULL_LABEL_COLOR);
 
-    const handle: VoxelHandle = { indices, offsets, floatHeight: DEFAULT_FLOAT_HEIGHT_m, visible: true, facing: new Quaternion(), hasFacing: false };
+    const handle: VoxelHandle = { indices, offsets, color: FULL_LABEL_COLOR, floatHeight: DEFAULT_FLOAT_HEIGHT_m, visible: true, facing: new Quaternion(), hasFacing: false };
     if (anchor) this.sync(handle, anchor, 0);
   }
 
