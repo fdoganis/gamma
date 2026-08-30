@@ -1,112 +1,60 @@
-// Owns entity lifecycle (EntityManager) and Three.js bridge (scene add/remove).
-import {
-  Mesh,
-  MeshPhongMaterial,
-  CylinderGeometry,
-  Vector3,
-  Color,
-  MathUtils
-} from 'three';
+// Facade over the scene pieces GameRunningState talks to: the socket grid
+// (Gameboard), the bodies that rise from it (Actors), and the Sparkles pool —
+// all parented to the placed anchor. Adds only the non-positional spawn cue; no
+// game rules (cadence, colors, scoring) live here.
+import type { Object3D, Vector3, Color } from 'three';
 
-import type { Object3D, PositionalAudio } from 'three';
-
-import { EntityManager } from './EntityManager';
-
+import { Gameboard } from './Gameboard';
+import { Actors } from './Actors';
 import { Sparkles } from '../animation/Sparkles';
 import type { BurstMode } from '../animation/Sparkles';
 import type { AudioManager } from '../audio/AudioManager';
 
-// mesh typed over its own material (Mesh<TGeometry, TMaterial>) instead of
-// storing material as a second field pointing at the same object.
-type Cone = { mesh: Mesh<CylinderGeometry, MeshPhongMaterial>; axis: Vector3; speed: number; sfx?: PositionalAudio };
-
-// The classic rainbow: ROYGBIV, standard hex values
-// 3-digit hex where it reduces losslessly.
-const PALETTE = ['#F00', '#FF7F00', '#FF0', '#0F0', '#00F', '#4B0082', '#8B00FF']; // red orange yellow green blue indigo violet
-
-
-// rad/s, mapped from the cone's own hue 
-const MIN_SPIN = 0.5;
-const MAX_SPIN = Math.PI * 2;
-
-const SPAWN_RADIUS_m = 0.6; // scatter radius on the placed surface
-const CONE_REST_Y_m = 0.1;  // half the cylinder height: rests base-down on the surface
-
 export class World {
-  #em: EntityManager<Cone> = new EntityManager<Cone>();
+  #board: Gameboard;
+  #actors: Actors;
   #sparkles: Sparkles;
   #audio: AudioManager;
-  #root: Object3D;
-
-  // CONST
-  #geo: CylinderGeometry;
 
   constructor(root: Object3D, audio: AudioManager) {
-    this.#root = root;
     this.#audio = audio;
-    this.#sparkles = new Sparkles(this.#root);
-
-    this.#geo = new CylinderGeometry(0, 0.05, 2 * CONE_REST_Y_m, 32); // apex at local +Y: stands upright with no extra rotation
+    this.#board = new Gameboard(root);
+    this.#actors = new Actors(root);
+    this.#sparkles = new Sparkles(root);
   }
 
-  spawn(): { mesh: Mesh<CylinderGeometry, MeshPhongMaterial>; color: Color } {
-    const angle = Math.random() * Math.PI * 2;
-    const r = Math.random() * SPAWN_RADIUS_m;
-    const material = new MeshPhongMaterial({ color: PALETTE[Math.floor(Math.random() * PALETTE.length)] });
-    const mesh = new Mesh(this.#geo, material);
-    mesh.castShadow = true;
-    mesh.position.set(Math.cos(angle) * r, CONE_REST_Y_m, Math.sin(angle) * r); // local to #root == local to the placed surface in XR
-    this.#root.add(mesh);
+  get holeCount(): number { return this.#board.holeCount; }
+  get activeCount(): number { return this.#actors.count; }
+  freeHoles(): number[] { return this.#board.freeHoles(); }
 
-    // walks up through #root (anchor) too, not just this mesh
-    // callers use the returned mesh as a same-frame text anchor immediately below
-    mesh.updateWorldMatrix(true, false);
-
-    const hsl = { h: 0, s: 0, l: 0 };
-    material.color.getHSL(hsl);
-    const axis = new Vector3(
-      Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1
-    ).normalize(); // "arbitrary", a fresh random axis per cone, fixed once chosen
-    const speed = MathUtils.lerp(MIN_SPIN, MAX_SPIN, hsl.h);
-
-    // TODO: QUESTION: is SFX attached to the last spawned object? can't we have multiple sounds play simultaneously?
-    let sfx: PositionalAudio | undefined;
+  // Raise a body of `colorHex` from `hole`, up for `hold` seconds.
+  spawnAtHole(hole: number, colorHex: string, hold: number): void {
+    const mesh = this.#actors.spawn(this.#board.holeAt(hole), colorHex, hold);
+    if (!mesh) return;
     try {
-      sfx = this.#audio.attach(mesh); // permanent: same node for this cone's hit/idle sounds later
-      this.#audio.trigger(sfx, 'spawn');
+      this.#audio.playSFX('spawn');
     } catch {
-      // Audio node creation can fail in restricted/sandboxed contexts 
-      // a cone should still spawn silently rather than losing the whole action.
+      // audio can fail in restricted/sandboxed contexts — the body still appears
     }
-
-    this.#em.create({ mesh, axis, speed, sfx });
-    return { mesh, color: material.color };
   }
 
   burstSparkles(origin: Vector3, color: Color, mode?: BurstMode): void {
     this.#sparkles.burst(origin, color, mode);
   }
 
-
   update(delta: number): void {
-    // Velocity, not a tween, no easing involved, just angle += speed * delta.
-    this.#em.forEach(({ mesh, axis, speed }) => {
-      mesh.rotateOnAxis(axis, speed * delta);
-    });
-
+    this.#actors.update(delta);
     this.#sparkles.update(delta);
+  }
 
+  reset(): void {
+    this.#actors.clear();
+    this.#board.reset();
   }
 
   dispose(): void {
-    this.#em.forEach(({ mesh, sfx }) => {
-      sfx?.disconnect();
-      this.#root.remove(mesh);
-      mesh.material.dispose();
-    });
-
-    this.#em.clear();
-    this.#geo.dispose();
+    this.#actors.dispose();
+    this.#board.dispose();
     this.#sparkles.dispose();
   }
 }
