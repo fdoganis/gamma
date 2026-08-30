@@ -187,6 +187,7 @@ export class RunState extends State {
 
   override exit() {
     this.#audio.deactivate();
+    this.#world.clearSparkles(); // else the winning hit's burst freezes on the Win screen
     if (this.#timerLabel) { this.#text.remove(this.#timerLabel); this.#timerLabel = null; }
     if (this.#scoreLabel) { this.#text.remove(this.#scoreLabel); this.#scoreLabel = null; }
     for (const p of this.#popups) { this.#text.remove(p.handle); this.#render.anchor.remove(p.obj); }

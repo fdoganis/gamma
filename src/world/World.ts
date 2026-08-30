@@ -85,7 +85,12 @@ export class World {
     this.#actors.clear();
     this.#board.reset();
     this.#rainbow.reset();
+    this.#sparkles.clear();
   }
+
+  // Drop any in-flight burst without touching the board/rainbow — for round end,
+  // where update() stops and a live burst would otherwise freeze on screen.
+  clearSparkles(): void { this.#sparkles.clear(); }
 
   dispose(): void {
     this.#actors.dispose();

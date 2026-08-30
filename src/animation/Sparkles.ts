@@ -123,6 +123,16 @@ export class Sparkles {
     if (t >= 1) p.active = false;
   }
 
+  // Kill every in-flight particle now (scale to 0). Used when the round ends so a
+  // burst isn't left frozen in the air once update() stops being called.
+  clear() {
+    for (const group of this.#groups)
+      for (const p of group.particles) {
+        p.active = false;
+        this.#pool.setMatrix(p.index, _mat.compose(_pos.set(0, 0, 0), IDENTITY_QUAT, _scale.setScalar(0)));
+      }
+  }
+
   dispose() {
     this.#pool.dispose();
   }
