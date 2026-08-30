@@ -14,7 +14,7 @@ const ROUND_SECONDS = 45;
 // The 7 stolen colors of the rainbow (game data — a gnome carries one each).
 const RAINBOW = ['#F00', '#FF7F00', '#FF0', '#0F0', '#00F', '#4B0082', '#8B00FF'];
 
-// Emergence rules (game logic — World only knows how to raise/hold/sink a prop).
+// Emergence rules (game logic — Actors only knows how to raise/hold/sink a body).
 const SPAWN_EVERY_S = 0.9;
 const SPAWN_JITTER_S = 0.6;
 const MAX_ACTIVE = 5;

@@ -9,8 +9,8 @@ import { easeOutCubic } from '../animation/Easing';
 import type { Hole } from './Hole';
 
 const ACTOR_H_m = 0.12;
-const HIDDEN_Y_m = -0.12; // centre: top of the body below the rim
-const PEEK_Y_m = 0.06;    // centre: most of the body clear of the hole
+const HIDDEN_Y_m = -0.14; // centre: whole body below the rim and inside the pit (fits a taller unicorn too)
+const PEEK_Y_m = 0.06;    // centre: clearly above the occluder plane, so a risen body is never culled
 const RISE_S = 0.25;
 const SINK_S = 0.22;
 
@@ -58,8 +58,8 @@ export class Actors {
   }
 
   update(delta: number): void {
-    const done: (Actor & { id: number })[] = [];
-
+    // Deleting the current entry mid-iteration is safe for a Map (it has already
+    // been yielded), so removal happens inline — no deferred `done` list.
     this.#em.forEach((a) => {
       a.phaseT += delta;
 
@@ -70,13 +70,14 @@ export class Actors {
       } else if (a.phase === 'holding') {
         if (a.phaseT >= a.hold) { a.phase = 'sinking'; a.phaseT = 0; }
       } else {
+        // TODO(polish): easeOutCubic decelerates into HIDDEN_Y, so the body
+        // creeps the last ~2 frames before it despawns — reads as a small pause.
+        // Switch the sink to `linear` (or an ease-in) during final UI tuning.
         const k = Math.min(a.phaseT / SINK_S, 1);
         a.mesh.position.y = MathUtils.lerp(PEEK_Y_m, HIDDEN_Y_m, easeOutCubic(k));
-        if (k >= 1) done.push(a);
+        if (k >= 1) this.#remove(a);
       }
     });
-
-    for (const a of done) this.#remove(a);
   }
 
   clear(): void {
