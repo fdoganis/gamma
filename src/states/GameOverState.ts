@@ -4,7 +4,7 @@ import type { ITransform } from '../types/ITransform';
 import type { TextManager } from '../text/TextManager';
 import type { TextHandle } from '../text/ITextEngine';
 import { SelectCommand } from '../commands/SelectCommand';
-import { GameIntroState } from './GameIntroState';
+import { IntroState } from './IntroState';
 
 
 export class GameOverState extends State {
@@ -26,7 +26,7 @@ export class GameOverState extends State {
     this.on(SelectCommand, this.#onSelect);
   }
 
-  #onSelect = () => { this.#sm.change(GameIntroState); };
+  #onSelect = () => { this.#sm.change(IntroState); };
 
   override enter() { this.#text.setVisible(this.#message, true); }
   override exit() { this.#text.setVisible(this.#message, false); } // TODO: QUESTION: LIFECYCLE: who cleans the cones?

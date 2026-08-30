@@ -14,7 +14,7 @@ const _target = new Vector3();
 // Desktop / non-XR fallback. A screen click is a real aim, so it becomes a
 // camera→cursor ray encoded in the command's transform: the matrix is placed at
 // the camera and oriented so its local −Z is the pick direction (the same
-// convention an XR controller's targetRay uses). GameRunningState reads it back
+// convention an XR controller's targetRay uses). RunState reads it back
 // as origin + −Z for hit-testing.
 export class PointerInputSource extends InputSource {
   #renderer: WebGLRenderer;

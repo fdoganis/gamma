@@ -5,7 +5,7 @@ import { randomTransform } from '../core/Utils';
 
 
 // Desktop fallback with no natural pose. There is nothing to aim, so each press
-// emits a debugRandom SelectCommand — states that consume a hit (GameRunningState)
+// emits a debugRandom SelectCommand — states that consume a hit (RunState)
 // treat it as "act on a random target". The transform is still filled with a
 // bounded random pose so states that only change on select keep working.
 export class KeyboardInputSource extends InputSource {

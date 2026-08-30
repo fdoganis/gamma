@@ -3,9 +3,9 @@ import { State } from '../core/State';
 import type { ITransition } from '../core/StateMachine';
 import type { RenderingManager } from '../rendering/RenderingManager';
 import { SelectCommand } from '../commands/SelectCommand';
-import { GameRunningState } from './GameRunningState';
+import { RunState } from './RunState';
 
-export class GamePlacingState extends State {
+export class AnchorState extends State {
   #render: RenderingManager;
   #sm: ITransition;
   #reticle: Mesh;
@@ -35,7 +35,7 @@ export class GamePlacingState extends State {
       this.#render.anchor.scale
     );
 
-    this.#sm.change(GameRunningState);
+    this.#sm.change(RunState);
   };
 
   override update(_delta: number, frame?: XRFrame) {

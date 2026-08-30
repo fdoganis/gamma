@@ -27,7 +27,7 @@ const MAX_ACTIVE = 5;
 const UP_MIN_S = 0.7;
 const UP_MAX_S = 1.8;
 
-export class GameRunningState extends State {
+export class RunState extends State {
   #world: World;
   #audio: AudioManager;
   #haptics: Haptics;

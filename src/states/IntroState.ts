@@ -4,9 +4,9 @@ import type { ITransform } from '../types/ITransform';
 import type { TextManager } from '../text/TextManager';
 import type { TextHandle } from '../text/ITextEngine';
 import { SelectCommand } from '../commands/SelectCommand';
-import { GamePlacingState } from './GamePlacingState';
+import { AnchorState } from './AnchorState';
 
-export class GameIntroState extends State {
+export class IntroState extends State {
   #sm: ITransition;
   #text: TextManager;
   #message: TextHandle;
@@ -28,7 +28,7 @@ export class GameIntroState extends State {
   }
 
   #onSelect = () => {
-    this.#sm.change(GamePlacingState);
+    this.#sm.change(AnchorState);
   };
 
   override enter() { this.#text.setVisible(this.#message, true); }

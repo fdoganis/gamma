@@ -8,12 +8,12 @@ import { OscillatorSoundEngine } from '../audio/OscillatorSoundEngine';
 
 import { World } from '../world/World';
 import { SelectCommand } from '../commands/SelectCommand';
-import { GameIntroState } from '../states/GameIntroState';
-import { GameRunningState } from '../states/GameRunningState';
+import { IntroState } from '../states/IntroState';
+import { RunState } from '../states/RunState';
 import { GameOverState } from '../states/GameOverState';
 import { randomTransform, getQuery } from '../core/Utils';
 import { Haptics } from '../input/XRGamepadUtils';
-import { GamePlacingState } from '../states/GamePlacingState';
+import { AnchorState } from '../states/AnchorState';
 import { TextManager } from '../text/TextManager';
 import { VoxelTextEngine } from '../text/engines/voxel/VoxelTextEngine';
 
@@ -41,15 +41,15 @@ export class Game {
     this.#bindInput();
   }
 
-  // GameIntroState / GameOverState
+  // IntroState / GameOverState
   // NOTE: Starting in Intro means the first tap changes state instead of spawning a cone.
   // Dev: `?run` skips Intro/Placing and drops the board in front of the default
   // camera, so the running state is testable on plain desktop without WebXR.
   #buildStateMachine(): StateMachine {
     const sm = new StateMachine();
-    sm.register(GameIntroState, new GameIntroState(sm, this.#text, this.#render.hudAnchor));
-    sm.register(GamePlacingState, new GamePlacingState(this.#render, sm));
-    sm.register(GameRunningState, new GameRunningState(this.#world, this.#audio, this.#haptics, sm, this.#text, this.#render.timerAnchor));
+    sm.register(IntroState, new IntroState(sm, this.#text, this.#render.hudAnchor));
+    sm.register(AnchorState, new AnchorState(this.#render, sm));
+    sm.register(RunState, new RunState(this.#world, this.#audio, this.#haptics, sm, this.#text, this.#render.timerAnchor));
     sm.register(GameOverState, new GameOverState(sm, this.#text, this.#render.hudAnchor));
 
     const debugRun = 'run' in getQuery();
@@ -58,7 +58,7 @@ export class Game {
       this.#render.camera.position.set(0, 0.6, 0.4);
       this.#render.camera.lookAt(0, 0, -0.6);
     }
-    sm.start(debugRun ? GameRunningState : GameIntroState);
+    sm.start(debugRun ? RunState : IntroState);
     return sm;
   }
 
