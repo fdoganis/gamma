@@ -13,9 +13,12 @@
     "serve": "http-server dist",
     "cloud": "cloudflared tunnel --url http://localhost:5173/",
     "zip": "rm -f dist.zip; cd dist; zip -r ../dist.zip .; cd ..; if [ $(wc -c < dist.zip) -ge 13312 ]; then echo \"*** ERROR *** : APP BUNDLE TOO BIG !!!\"; fi; wc -c dist.zip; mv dist.zip ./build/gamma.zip",
-    "lsgit": "git ls-files | sed 's|^|https://github.com/fdoganis/gamma/blob/main/|'"
+    "lsgit": "git ls-files | sed 's|^|https://github.com/fdoganis/gamma/blob/main/|'",
+    "smoke": "node scripts/smoke.mjs",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/three": "^0.185.0",
     "@types/webxr": "^0.5.24",
     "http-server": "^14.1.1",
