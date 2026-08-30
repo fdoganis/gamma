@@ -29,3 +29,27 @@ test('boots, renders, and animates', async ({ page }) => {
 
   expect(problems, 'no page errors').toEqual([]);
 });
+
+// Space is the keyboard fallback for "select": in the running state it collects a
+// random actor. This only checks the path stays healthy under repeated presses
+// (a real "an actor was collected" assertion needs IWER — see GNOMES.md).
+test('repeated Space collects stay healthy', async ({ page }) => {
+  const problems: string[] = [];
+  page.on('pageerror', (e) => problems.push(`pageerror: ${e}`));
+  page.on('console', (m) => { if (m.type() === 'error') problems.push(`console.error: ${m.text()}`); });
+
+  await page.goto('/?run');
+  await expect(page.locator('canvas')).toBeVisible();
+  await page.waitForTimeout(2500); // let a few actors rise
+
+  for (let i = 0; i < 12; i++) {
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(200);
+  }
+
+  const shot = await page.locator('canvas').screenshot();
+  await page.waitForTimeout(1500);
+  const shot2 = await page.locator('canvas').screenshot();
+  expect(Buffer.compare(shot, shot2), 'still animating after Space presses').not.toBe(0);
+  expect(problems, 'no page errors from Space collects').toEqual([]);
+});
