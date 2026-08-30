@@ -109,7 +109,11 @@ export class Actors {
     return ids.length ? this.despawn(ids[(Math.random() * ids.length) | 0]) : null;
   }
 
-  update(delta: number): void {
+  // Advances every actor. Returns the number of **misses** this frame — actors
+  // that sank back down unhit (a hit removes via despawn(), not here). RunState
+  // uses it to break the streak.
+  update(delta: number): number {
+    let missed = 0;
     // Deleting the current entry mid-iteration is safe for a Map (it has already
     // been yielded), so removal happens inline — no deferred `done` list.
     this.#em.forEach((a) => {
@@ -127,9 +131,10 @@ export class Actors {
         // Switch the sink to `linear` (or an ease-in) during final UI tuning.
         const k = Math.min(a.phaseT / SINK_S, 1);
         a.mesh.position.y = MathUtils.lerp(PEEK_Y_m, HIDDEN_Y_m, easeOutCubic(k));
-        if (k >= 1) this.#remove(a);
+        if (k >= 1) { this.#remove(a); missed++; }
       }
     });
+    return missed;
   }
 
   clear(): void {

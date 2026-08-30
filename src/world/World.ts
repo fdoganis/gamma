@@ -74,9 +74,11 @@ export class World {
     return removed;
   }
 
-  update(delta: number): void {
-    this.#actors.update(delta);
+  // Returns the number of misses this frame — actors that sank unhit (streak-break signal).
+  update(delta: number): number {
+    const missed = this.#actors.update(delta);
     this.#sparkles.update(delta);
+    return missed;
   }
 
   reset(): void {
