@@ -1,6 +1,7 @@
-import type { WebGLRenderer, Scene, PerspectiveCamera } from 'three';
+import type { WebGLRenderer, Scene, PerspectiveCamera, Object3D } from 'three';
 import { InputProcessor } from './InputProcessor';
 import { SpatialInputSource } from './SpatialInputSource';
+import { HandSource } from './HandSource';
 import { KeyboardInputSource } from './KeyboardInputSource';
 import { PointerInputSource } from './PointerInputSource';
 import { GamepadSource } from './GamepadSource';
@@ -10,15 +11,17 @@ import { GamepadPool } from './GamepadPool';
 export class InputManager {
   xrLeft: SpatialInputSource;
   xrRight: SpatialInputSource;
-  handLeft: SpatialInputSource;
-  handRight: SpatialInputSource;
+  handLeft: HandSource;
+  handRight: HandSource;
   gamepadLeft: GamepadSource;
   gamepadRight: GamepadSource;
   gamepadPool: GamepadPool;
 
   #processor: InputProcessor;
 
-  constructor(renderer: WebGLRenderer, scene: Scene, camera: PerspectiveCamera) {
+  // `board` is the placed-surface anchor — HandSource needs its height to tell a
+  // table whack from a mid-air stop.
+  constructor(renderer: WebGLRenderer, scene: Scene, camera: PerspectiveCamera, board: Object3D) {
     this.#processor = new InputProcessor();
 
     const ctrlL = renderer.xr.getController(0);
@@ -29,8 +32,8 @@ export class InputManager {
 
     this.xrLeft = new SpatialInputSource(ctrlL);
     this.xrRight = new SpatialInputSource(ctrlR);
-    this.handLeft = new SpatialInputSource(handL);
-    this.handRight = new SpatialInputSource(handR);
+    this.handLeft = new HandSource(handL, 'left', board);
+    this.handRight = new HandSource(handR, 'right', board);
 
     this.gamepadLeft = GamepadSource.forXRController(renderer, 'left');
     this.gamepadRight = GamepadSource.forXRController(renderer, 'right');

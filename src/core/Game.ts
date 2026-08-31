@@ -34,7 +34,7 @@ export class Game {
     this.#audio = new AudioManager(this.#render.camera, new SoundBoxSoundEngine()); // or: OscillatorSoundEngine / ZzfxSoundEngine
     this.#world = new World(this.#render.anchor, this.#audio);
     this.#haptics = new Haptics(this.#render.renderer);
-    this.#input = new InputManager(this.#render.renderer, this.#render.scene, this.#render.camera);
+    this.#input = new InputManager(this.#render.renderer, this.#render.scene, this.#render.camera, this.#render.anchor);
     this.#text = new TextManager(new VoxelTextEngine(this.#render.scene, this.#render.camera));
 
     this.#sm = this.#buildStateMachine();
