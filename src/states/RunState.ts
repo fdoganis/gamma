@@ -96,7 +96,7 @@ export class RunState extends State {
   #onSelect = (cmd: SelectCommand) => {
     const removed = cmd.debugRandom
       ? this.#world.hitRandom()
-      : this.#world.hit(this.#rayFrom(cmd.transform));
+      : this.#world.hit(this.#rayFrom(cmd.transform), cmd.reach || undefined);
     if (!removed) return;
 
     this.#haptics.pulse(cmd.handedness);

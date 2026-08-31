@@ -59,8 +59,8 @@ export class World {
   // effect fires. A decoy (unicorn) is left standing — only a pink puff plays —
   // and the hit is still reported so RunState can run its penalty. Returns
   // { tag, color, position } or null.
-  hit(ray: Ray): RemovedActor | null {
-    const h = this.#actors.hitTest(ray, PROXIMITY_R_m);
+  hit(ray: Ray, radius = PROXIMITY_R_m): RemovedActor | null {
+    const h = this.#actors.hitTest(ray, radius);
     if (!h) return null;
     if (h.decoy) {
       this.#sparkles.burst(h.position, DECOY_PUFF, 'explode');
