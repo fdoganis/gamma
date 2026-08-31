@@ -64,6 +64,7 @@ export class World {
     if (!h) return null;
     if (h.decoy) {
       this.#sparkles.burst(h.position, DECOY_PUFF, 'explode');
+      try { this.#audio.playSFX('unicorn'); } catch { /* audio may be unavailable */ }
       return { tag: h.tag, color: DECOY_PUFF, position: h.position };
     }
     return this.#collect(this.#actors.despawn(h.id));

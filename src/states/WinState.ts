@@ -6,6 +6,7 @@ import type { TextHandle } from '../text/ITextEngine';
 import { SelectCommand } from '../commands/SelectCommand';
 import { IntroState } from './IntroState';
 import type { Score } from '../core/Score';
+import type { AudioManager } from '../audio/AudioManager';
 
 // Reached when all 7 rainbow colors are collected before the timer runs out.
 // Placeholder for the "rainbow arc over the unicorn, unicorn freed, next level"
@@ -14,13 +15,15 @@ export class WinState extends State {
   #sm: ITransition;
   #text: TextManager;
   #score: Score;
+  #audio: AudioManager;
   #message: TextHandle;
 
-  constructor(sm: ITransition, text: TextManager, hudAnchor: ITransform, score: Score) {
+  constructor(sm: ITransition, text: TextManager, hudAnchor: ITransform, score: Score, audio: AudioManager) {
     super();
     this.#sm = sm;
     this.#text = text;
     this.#score = score;
+    this.#audio = audio;
     this.#message = text.show('YOU WIN', hudAnchor, { color: '#00ff88', visible: false });
     this.#registerHandlers();
   }
@@ -32,8 +35,13 @@ export class WinState extends State {
   #onSelect = () => { this.#sm.change(IntroState); };
 
   override enter() {
+    this.#audio.activate(); // RunState.exit() deactivated it; the sting needs it back
+    this.#audio.playSFX('win');
     this.#text.setText(this.#message, `YOU WIN  ${this.#score.value}`);
     this.#text.setVisible(this.#message, true);
   }
-  override exit() { this.#text.setVisible(this.#message, false); }
+  override exit() {
+    this.#audio.deactivate();
+    this.#text.setVisible(this.#message, false);
+  }
 }

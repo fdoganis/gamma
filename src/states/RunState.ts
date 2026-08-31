@@ -39,6 +39,7 @@ const UNICORN_PENALTY_PTS = 200; // docked only when there's no collected color 
 // Scoring
 const POINTS_PER_STREAK = 100;   // k-th unbroken collect scores k * this
 const TIME_BONUS_PER_S = 50;     // leftover seconds → points on a win
+const TICK_FROM_S = 5;           // countdown pulse plays for the last N seconds
 
 // Score popups
 const POPUP_LIFE_S = 0.9;
@@ -210,6 +211,7 @@ export class RunState extends State {
     if (seconds !== this.#lastShownSecond) {
       this.#lastShownSecond = seconds;
       this.#text.setText(this.#timerLabel!, String(seconds));
+      if (seconds > 0 && seconds <= TICK_FROM_S) this.#audio.playSFX('tick'); // final-seconds pulse
     }
 
     if (this.#timeLeft <= 0) {
@@ -228,9 +230,11 @@ export class RunState extends State {
     this.#timerLabel = this.#text.show(String(ROUND_SECONDS), this.#render.timerAnchor, { color: '#ffffff' });
     this.#scoreLabel = this.#text.show(String(this.#score.value), this.#render.scoreAnchor, { color: '#ffffff' });
     this.#audio.activate();
+    this.#audio.playBGM('music'); // looping bed for the round only
   }
 
   override exit() {
+    this.#audio.stopBGM();
     this.#audio.deactivate();
     this.#world.clearSparkles(); // else the winning hit's burst freezes on the Win screen
     if (this.#timerLabel) { this.#text.remove(this.#timerLabel); this.#timerLabel = null; }

@@ -5,7 +5,7 @@ import { RenderingManager } from '../rendering/RenderingManager';
 import { InputManager } from '../input/InputManager';
 import { AudioManager } from '../audio/AudioManager';
 
-import { OscillatorSoundEngine } from '../audio/OscillatorSoundEngine';
+import { SoundBoxSoundEngine } from '../audio/engines/soundbox/SoundBoxSoundEngine';
 
 import { World } from '../world/World';
 import { SelectCommand } from '../commands/SelectCommand';
@@ -31,7 +31,7 @@ export class Game {
 
   constructor() {
     this.#render = new RenderingManager();
-    this.#audio = new AudioManager(this.#render.camera, new OscillatorSoundEngine()); // or: new ZzfxSoundEngine() 
+    this.#audio = new AudioManager(this.#render.camera, new SoundBoxSoundEngine()); // or: OscillatorSoundEngine / ZzfxSoundEngine
     this.#world = new World(this.#render.anchor, this.#audio);
     this.#haptics = new Haptics(this.#render.renderer);
     this.#input = new InputManager(this.#render.renderer, this.#render.scene, this.#render.camera);
@@ -53,8 +53,8 @@ export class Game {
     sm.register(IntroState, new IntroState(sm, this.#text, this.#render.hudAnchor, score));
     sm.register(AnchorState, new AnchorState(this.#render, sm));
     sm.register(RunState, new RunState(this.#world, this.#audio, this.#haptics, sm, this.#text, this.#render, score));
-    sm.register(WinState, new WinState(sm, this.#text, this.#render.hudAnchor, score));
-    sm.register(GameOverState, new GameOverState(sm, this.#text, this.#render.hudAnchor, score));
+    sm.register(WinState, new WinState(sm, this.#text, this.#render.hudAnchor, score, this.#audio));
+    sm.register(GameOverState, new GameOverState(sm, this.#text, this.#render.hudAnchor, score, this.#audio));
 
     const debugRun = 'run' in getQuery();
     if (debugRun) {
