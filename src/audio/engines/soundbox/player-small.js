@@ -23,7 +23,9 @@
 *
 */
 
-"use strict";
+// Converted to an ES module for this project: the original
+// `var CPlayer = function () { ... }; module.exports = CPlayer;` became a single
+// named `export function CPlayer() { ... }`. The body below is verbatim SoundBox.
 
 // Some general notes and recommendations:
 //  * This code uses modern ECMAScript features, such as ** instead of
@@ -34,7 +36,7 @@
 //    further by deleting the code.
 
 
-var CPlayer = function () {
+export function CPlayer() {
 
   //--------------------------------------------------------------------------
   // Private methods
@@ -355,6 +357,4 @@ var CPlayer = function () {
     }
     return d;
   };
-};
-
-module.exports = CPlayer;
+}

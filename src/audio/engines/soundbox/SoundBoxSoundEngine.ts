@@ -1,6 +1,6 @@
 // TODO: ARCHI: WIP
 
-import CPlayer from './player-small';
+import { CPlayer } from './player-small';
 import type { ISoundEngine, SoundHandle } from '../../ISoundEngine';
 
 const SONGS: Record<string, object> = { spawn: { /* one-instrument, one-note song object */ } };
