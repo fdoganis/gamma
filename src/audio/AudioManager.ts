@@ -67,18 +67,21 @@ export class AudioManager {
     handle.source.onended = () => handle.output.disconnect();
   }
 
-  // Non-positional by design.
-  // One channel, not a pool.
-  // Starting a new track stops whatever was playing.
+  // Non-positional by design. One channel, not a pool. Starting a new track
+  // stops whatever was playing. The engine already started (and, for a music
+  // cue, set `loop` on) the source — this just routes and tracks it.
   playBGM(id: string) {
+    this.stopBGM();
     if (this.#muted) { return; }
-    this.#bgm?.source.stop();
     const handle = this.#engine.createSource(id, this.context);
     if (!handle) { return; }
-
     handle.output.connect(this.#listener.getInput());
-    handle.source.start();
     this.#bgm = handle;
+  }
+
+  stopBGM() {
+    this.#bgm?.source.stop();
+    this.#bgm = null;
   }
 
   toggle() { this.#muted ? this.activate() : this.deactivate(); }
