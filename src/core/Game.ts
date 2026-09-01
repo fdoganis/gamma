@@ -56,7 +56,7 @@ export class Game {
     sm.register(WinState, new WinState(sm, this.#text, this.#render.hudAnchor, score, this.#audio));
     sm.register(GameOverState, new GameOverState(sm, this.#text, this.#render.hudAnchor, score, this.#audio));
 
-    const debugRun = 'run' in getQuery();
+    const debugRun = __DEV__ && 'run' in getQuery();
     if (debugRun) {
       this.#render.anchor.position.set(0, 0, -0.6);
       this.#render.camera.position.set(0, 0.6, 0.4);

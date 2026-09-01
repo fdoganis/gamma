@@ -39,17 +39,20 @@ export class InputManager {
     this.gamepadRight = GamepadSource.forXRController(renderer, 'right');
     this.gamepadPool = new GamepadPool(this.#processor);
 
-    const keyboard = new KeyboardInputSource();
-    const pointer = new PointerInputSource(renderer, camera);
-
     this.#processor.add(this.xrLeft);
     this.#processor.add(this.xrRight);
     this.#processor.add(this.handLeft);
     this.#processor.add(this.handRight);
     this.#processor.add(this.gamepadLeft);
     this.#processor.add(this.gamepadRight);
-    this.#processor.add(keyboard);
-    this.#processor.add(pointer);
+
+    if (__DEV__) {
+      // Desktop-only fallbacks (mouse aim + keyboard collect). Folds to
+      // `if(false)` in prod, so KeyboardInputSource / PointerInputSource
+      // tree-shake out of the XR-only build.
+      this.#processor.add(new KeyboardInputSource());
+      this.#processor.add(new PointerInputSource(renderer, camera));
+    }
   }
 
   get commands() { return this.#processor.commands; }

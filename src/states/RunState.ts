@@ -94,7 +94,7 @@ export class RunState extends State {
   // time for a color) light its rainbow arc. All 7 → win, with a leftover-time
   // bonus.
   #onSelect = (cmd: SelectCommand) => {
-    const removed = cmd.debugRandom
+    const removed = __DEV__ && cmd.debugRandom
       ? this.#world.hitRandom()
       : this.#world.hit(this.#rayFrom(cmd.transform), cmd.reach || undefined);
     if (!removed) return;
