@@ -8,27 +8,23 @@ import type { ITransition } from '../core/StateMachine';
 import type { ITransform } from '../types/ITransform';
 import type { RenderingManager } from '../rendering/RenderingManager';
 import type { Score } from '../core/Score';
+import type { Level } from '../core/Level';
+import { LEVELS, LEVEL_COUNT } from '../core/levels';
+import type { LevelConfig } from '../core/levels';
+import { RAINBOW } from '../core/palette';
 import { GameOverState } from './GameOverState';
 import { WinState } from './WinState';
-import { Scoring, RAINBOW } from './Scoring';
+import { Scoring } from './Scoring';
 import type { TextManager } from '../text/TextManager';
 import type { TextHandle } from '../text/ITextEngine';
 
 const ROUND_SECONDS = 45;
 
-// Emergence rules (game logic — Actors only knows how to raise/hold/sink a body).
-const SPAWN_EVERY_S = 0.9;
-const SPAWN_JITTER_S = 0.6;
-const MAX_ACTIVE = 5;
-const UP_MIN_S = 0.7;
-const UP_MAX_S = 1.8;
-
 // The unicorn: a decoy that must NOT be tapped. Carries a sentinel tag so it
 // never collides with a rainbow index; peeks longer than a gnome (more time to
-// misfire); at most one at a time.
+// misfire); at most one at a time. Cadence is level-scaled; its hold window is not.
 const UNICORN_HEX = '#f3ead7'; // cream
 const UNICORN_TAG = -1;
-const UNICORN_CHANCE = 0.12;   // roll per spawn tick when a hole is free and none is up
 const UNICORN_UP_MIN_S = 1.5;
 const UNICORN_UP_MAX_S = 2.5;
 
@@ -46,13 +42,15 @@ export class RunState extends State {
   #transition: ITransition;
   #text: TextManager;
   #render: RenderingManager;
+  #level: Level;
   #scoring: Scoring;
+  #cfg: LevelConfig = LEVELS[0];
   #timeLeft = ROUND_SECONDS;
   #spawnCooldown = 0;
   #timerLabel: TextHandle | null = null;
   #lastShownSecond = -1;
 
-  constructor(world: World, audio: AudioManager, haptics: Haptics, transition: ITransition, text: TextManager, render: RenderingManager, score: Score) {
+  constructor(world: World, audio: AudioManager, haptics: Haptics, transition: ITransition, text: TextManager, render: RenderingManager, score: Score, level: Level) {
     super();
     this.#world = world;
     this.#audio = audio;
@@ -60,6 +58,7 @@ export class RunState extends State {
     this.#transition = transition;
     this.#text = text;
     this.#render = render;
+    this.#level = level;
     this.#scoring = new Scoring(world, text, render, score);
     this.#registerHandlers();
   }
@@ -70,8 +69,8 @@ export class RunState extends State {
 
   // A select aims a ray (source world pose, −Z) at the live actors; keyboard has
   // no aim → collect a random actor. A hit buzzes either way; the unicorn is the
-  // penalty path, everything else goes to Scoring. Completing the set → win with
-  // a leftover-time bonus.
+  // penalty path, everything else goes to Scoring. Completing every color → win
+  // with a leftover-time bonus, then advance the level.
   #onSelect = (cmd: SelectCommand) => {
     const removed = __DEV__ && cmd.debugRandom
       ? this.#world.hitRandom()
@@ -84,6 +83,7 @@ export class RunState extends State {
 
     if (this.#scoring.collect(removed)) {
       this.#scoring.awardTimeBonus(this.#timeLeft);
+      this.#level.advance();
       this.#transition.change(WinState);
     }
   };
@@ -96,22 +96,23 @@ export class RunState extends State {
 
   #trySpawn() {
     const free = this.#world.freeHoles();
-    // one actor per color at a time; a collected color never returns
+    // one actor per color at a time; a color that's done for the level never returns
     const busy = new Set(this.#world.activeTags());
     const avail: number[] = [];
     for (let i = 0; i < RAINBOW.length; i++) {
-      if (!this.#scoring.hasColor(i) && !busy.has(i)) avail.push(i);
+      if (!this.#scoring.isColorDone(i) && !busy.has(i)) avail.push(i);
     }
-    if (!free.length || !avail.length || this.#world.activeCount >= MAX_ACTIVE) return;
+    if (!free.length || !avail.length || this.#world.activeCount >= this.#cfg.maxActive) return;
 
     const hole = free[(Math.random() * free.length) | 0];
     const tag = avail[(Math.random() * avail.length) | 0];
-    this.#world.spawnAtHole(hole, RAINBOW[tag], UP_MIN_S + Math.random() * (UP_MAX_S - UP_MIN_S), tag);
+    const hold = this.#cfg.upMin + Math.random() * (this.#cfg.upMax - this.#cfg.upMin);
+    this.#world.spawnAtHole(hole, RAINBOW[tag], hold, tag);
   }
 
   #tryUnicorn() {
     if (this.#world.activeTags().includes(UNICORN_TAG)) return; // one at a time
-    if (Math.random() >= UNICORN_CHANCE) return;
+    if (Math.random() >= this.#cfg.unicornChance) return;
     const free = this.#world.freeHoles();
     if (!free.length) return;
     const hole = free[(Math.random() * free.length) | 0];
@@ -125,7 +126,7 @@ export class RunState extends State {
 
     this.#spawnCooldown -= delta;
     if (this.#spawnCooldown <= 0) {
-      this.#spawnCooldown = SPAWN_EVERY_S + Math.random() * SPAWN_JITTER_S;
+      this.#spawnCooldown = this.#cfg.spawnEvery + Math.random() * this.#cfg.jitter;
       this.#trySpawn();
       if (Math.random() < 0.3) this.#trySpawn(); // sometimes several at once
       this.#tryUnicorn();
@@ -145,11 +146,12 @@ export class RunState extends State {
   }
 
   override enter() {
+    this.#cfg = LEVELS[Math.min(this.#level.value, LEVEL_COUNT) - 1];
     this.#timeLeft = ROUND_SECONDS;
     this.#lastShownSecond = -1;
-    this.#spawnCooldown = SPAWN_EVERY_S;
+    this.#spawnCooldown = this.#cfg.spawnEvery;
     this.#world.reset();
-    this.#scoring.reset();
+    this.#scoring.reset(this.#level.value); // level N → N taps per color
     this.#timerLabel = this.#text.show(String(ROUND_SECONDS), this.#render.timerAnchor, { color: '#ffffff' });
     this.#audio.activate();
     this.#audio.playBGM('music'); // looping bed for the round only

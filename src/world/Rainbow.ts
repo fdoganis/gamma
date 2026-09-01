@@ -1,16 +1,20 @@
 // The rainbow the colors were stolen from: seven half-torus arcs standing over
-// the board, gray until their color is collected. Also the win indicator — all
-// seven lit means the round is won. Generic: it is told "light arc i to color X",
-// it does not know the colors mean ROYGBIV or track progress itself.
-import { Mesh, MeshBasicMaterial, TorusGeometry } from 'three';
+// the board. Each arc is a per-color fill gauge — gray at 0, its ROYGBIV color
+// at 1 (level N needs N of that color, so fill = count / N). All seven full =
+// round won. Generic: it is told "arc i is `fill` full", it does not track
+// progress itself.
+import { Mesh, MeshBasicMaterial, TorusGeometry, Color } from 'three';
 import type { Object3D } from 'three';
+import { RAINBOW, GRAY } from '../core/palette';
 
 const ARCS = 7;
 const INNER_R_m = 0.26;
 const GAP_m = 0.022;   // radial spacing between arcs
 const TUBE_m = 0.012;
 const Z_OFF_m = -0.15; // sit toward the far edge, so actors are in front of it
-const GRAY = 0x555555;
+
+const _gray = new Color(GRAY);
+const _target = RAINBOW.map((hex) => new Color(hex));
 
 export class Rainbow {
   #root: Object3D;
@@ -28,17 +32,16 @@ export class Rainbow {
     }
   }
 
-  light(i: number, colorHex: string): void {
-    this.#arcs[i]?.material.color.set(colorHex);
-  }
-
-  // Back to gray — a collected color was snatched back (unicorn penalty).
-  unlight(i: number): void {
-    this.#arcs[i]?.material.color.setHex(GRAY);
+  // fill 0..1 — lerp the arc from gray toward its color; snap to full at >= 1.
+  setFill(i: number, fill: number): void {
+    const arc = this.#arcs[i];
+    if (!arc) return;
+    if (fill >= 1) arc.material.color.copy(_target[i]);
+    else arc.material.color.lerpColors(_gray, _target[i], Math.max(0, fill));
   }
 
   reset(): void {
-    for (const arc of this.#arcs) arc.material.color.setHex(GRAY);
+    for (const arc of this.#arcs) arc.material.color.copy(_gray);
   }
 
   dispose(): void {

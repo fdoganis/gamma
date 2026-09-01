@@ -36,8 +36,7 @@ export class World {
   freeHoles(): number[] { return this.#board.freeHoles(); }
   activeTags(): number[] { return this.#actors.activeTags(); }
 
-  lightRainbow(i: number, colorHex: string): void { this.#rainbow.light(i, colorHex); }
-  unlightRainbow(i: number): void { this.#rainbow.unlight(i); }
+  setRainbowFill(i: number, fill: number): void { this.#rainbow.setFill(i, fill); }
 
   // Raise a body of `colorHex` from `hole`, up for `hold` seconds, carrying `tag`.
   // `decoy` gives it the unicorn's pink horn and makes a tap non-destructive.

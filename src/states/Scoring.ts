@@ -1,8 +1,8 @@
 // The scoring + feedback side of a round, split out of RunState: the streak, the
-// running Score, which rainbow colors are in, the "+N" popups, and the unicorn
-// penalty. RunState still owns the spawn scheduler, the countdown and the state
-// transitions — it just asks Scoring "is this color collected?" / "did this hit
-// win it?" and forwards misses.
+// running Score, how many of each rainbow color are in (level N needs N each),
+// the "+N" popups, and the unicorn penalty. RunState owns the spawn scheduler,
+// the countdown and the transitions — it just asks Scoring "is this color done?"
+// / "did this hit win the round?" and forwards misses.
 import { Object3D } from 'three';
 import type { Vector3 } from 'three';
 import type { World } from '../world/World';
@@ -11,10 +11,7 @@ import type { RenderingManager } from '../rendering/RenderingManager';
 import type { Score } from '../core/Score';
 import type { TextManager } from '../text/TextManager';
 import type { TextHandle } from '../text/ITextEngine';
-
-// The 7 stolen colors of the rainbow — game data. An actor carries one; its
-// index here is the actor's `tag`. Shared with RunState's spawn scheduler.
-export const RAINBOW = ['#F00', '#FF7F00', '#FF0', '#0F0', '#00F', '#4B0082', '#8B00FF'];
+import { RAINBOW } from '../core/palette';
 
 const POINTS_PER_STREAK = 100; // k-th unbroken collect scores k * this
 const TIME_BONUS_PER_S = 50;   // leftover seconds → points on a win
@@ -35,8 +32,9 @@ export class Scoring {
   #score: Score;
 
   #streak = 0;
-  #collected = new Set<number>(); // rainbow indices retrieved this round
-  #order: number[] = [];          // same indices in collect order — the unicorn snatches the last one back
+  #reps = 1;                                 // taps needed per color this level
+  #counts = new Uint8Array(RAINBOW.length);  // taps landed per color
+  #order: number[] = [];                     // one entry per landed tap — the unicorn pops the last
   #popups: Popup[] = [];
   #label: TextHandle | null = null;
 
@@ -47,11 +45,11 @@ export class Scoring {
     this.#score = score;
   }
 
-  hasColor(i: number): boolean { return this.#collected.has(i); }
+  isColorDone(i: number): boolean { return this.#counts[i] >= this.#reps; }
 
   // A normal (non-unicorn) hit: bump the streak, score k*100, float a "+N"
-  // popup, and light the arc the first time a color comes in. Returns true when
-  // that hit completed the set (RunState then awards the time bonus and wins).
+  // popup, add one to this color's count and update its arc gauge. Returns true
+  // when that hit completed every color (RunState then awards the time bonus).
   collect(removed: RemovedActor): boolean {
     this.#streak += 1;
     const pts = this.#streak * POINTS_PER_STREAK;
@@ -59,25 +57,24 @@ export class Scoring {
     this.#text.setText(this.#label!, String(this.#score.value));
     this.#popup(removed.position, `#${removed.color.getHexString()}`, pts);
 
-    if (!this.#collected.has(removed.tag)) {
-      this.#collected.add(removed.tag);
-      this.#order.push(removed.tag);
-      this.#world.lightRainbow(removed.tag, RAINBOW[removed.tag]);
-      return this.#collected.size === RAINBOW.length;
-    }
-    return false;
+    const tag = removed.tag;
+    this.#counts[tag] += 1;
+    this.#order.push(tag);
+    this.#world.setRainbowFill(tag, this.#counts[tag] / this.#reps);
+
+    return this.#counts.every((c) => c >= this.#reps);
   }
 
-  // Tapped the decoy. Break the streak and snatch the most-recently collected
-  // color back (its arc grays and it can spawn again); with nothing to snatch,
-  // dock points instead. Level-scaled harsher later.
+  // Tapped the decoy. Break the streak and take one tap back off the
+  // most-recent color (its gauge drops); with nothing to take, dock points.
+  // Level-scaled harsher later (L13: lose everything).
   hitUnicorn(pos: Vector3): void {
     this.#streak = 0;
     const lost = this.#order.pop();
-    if (lost !== undefined) {
-      this.#collected.delete(lost);
-      this.#world.unlightRainbow(lost);
-      this.#popup(pos, UNICORN_HEX, -1); // "-1" arc, next to the graying arc
+    if (lost !== undefined && this.#counts[lost] > 0) {
+      this.#counts[lost] -= 1;
+      this.#world.setRainbowFill(lost, this.#counts[lost] / this.#reps);
+      this.#popup(pos, UNICORN_HEX, -1);
     } else {
       this.#score.add(-PENALTY_PTS);
       this.#text.setText(this.#label!, String(this.#score.value));
@@ -107,9 +104,10 @@ export class Scoring {
     }
   }
 
-  reset(): void {
+  reset(reps: number): void {
+    this.#reps = reps;
     this.#streak = 0;
-    this.#collected.clear();
+    this.#counts.fill(0);
     this.#order.length = 0;
     this.#label = this.#text.show(String(this.#score.value), this.#render.scoreAnchor, { color: '#ffffff' });
   }

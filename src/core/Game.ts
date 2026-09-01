@@ -1,6 +1,7 @@
 import { GameLoop } from './GameLoop';
 import { StateMachine } from './StateMachine';
 import { Score } from './Score';
+import { Level } from './Level';
 import { RenderingManager } from '../rendering/RenderingManager';
 import { InputManager } from '../input/InputManager';
 import { AudioManager } from '../audio/AudioManager';
@@ -50,10 +51,11 @@ export class Game {
   #buildStateMachine(): StateMachine {
     const sm = new StateMachine();
     const score = new Score();
-    sm.register(IntroState, new IntroState(sm, this.#text, this.#render.hudAnchor, score));
+    const level = new Level();
+    sm.register(IntroState, new IntroState(sm, this.#text, this.#render.hudAnchor, score, level));
     sm.register(AnchorState, new AnchorState(this.#render, sm));
-    sm.register(RunState, new RunState(this.#world, this.#audio, this.#haptics, sm, this.#text, this.#render, score));
-    sm.register(WinState, new WinState(sm, this.#text, this.#render.hudAnchor, score, this.#audio));
+    sm.register(RunState, new RunState(this.#world, this.#audio, this.#haptics, sm, this.#text, this.#render, score, level));
+    sm.register(WinState, new WinState(sm, this.#text, this.#render.hudAnchor, score, level, RunState, this.#audio));
     sm.register(GameOverState, new GameOverState(sm, this.#text, this.#render.hudAnchor, score, this.#audio));
 
     const debugRun = __DEV__ && 'run' in getQuery();
