@@ -30,6 +30,10 @@ export class AudioManager {
 
   get context(): AudioContext { return this.#listener.context; }
 
+  // Asset-load phase: let the engine synth every buffer now, so nothing stalls
+  // the main thread on first play (the music loop from RunState in particular).
+  prewarm(): void { this.#engine.prewarm?.(this.context); }
+
   // Non-positional: plays straight through the listener. For cues with no
   // source in the world (UI, stingers).
   playSFX(id: string): void {

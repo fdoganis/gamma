@@ -54,7 +54,25 @@ function toSong(cue: Cue): object {
 export class SoundBoxSoundEngine implements ISoundEngine {
   #buffers = new Map<string, AudioBuffer>();
 
+  // Render every cue to its AudioBuffer up front (asset-load phase), so the
+  // first playBGM/playSFX later — the music loop from RunState especially —
+  // doesn't stall the main thread synthesising.
+  prewarm(context: AudioContext): void {
+    for (const id in CUES) this.#bufferFor(id, context);
+  }
+
   createSource(id: string, context: AudioContext): SoundHandle | null {
+    const buffer = this.#bufferFor(id, context);
+    if (!buffer) return null;
+
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    source.loop = !!CUES[id].loop;
+    source.start();
+    return { source, output: source };
+  }
+
+  #bufferFor(id: string, context: AudioContext): AudioBuffer | null {
     const cue = CUES[id];
     if (!cue) return null;
 
@@ -66,11 +84,6 @@ export class SoundBoxSoundEngine implements ISoundEngine {
       buffer = player.createAudioBuffer(context);
       this.#buffers.set(id, buffer);
     }
-
-    const source = context.createBufferSource();
-    source.buffer = buffer;
-    source.loop = !!cue.loop;
-    source.start();
-    return { source, output: source };
+    return buffer;
   }
 }

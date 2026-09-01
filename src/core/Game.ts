@@ -92,6 +92,10 @@ export class Game {
 
   render() { this.#render.render(); }
 
+  // Called once from main before start(): pre-synth the audio buffers so the
+  // first playBGM / playSFX doesn't block a frame.
+  preload() { this.#audio.prewarm(); }
+
   dispose() {
     this.#render.renderer.setAnimationLoop(null);
     this.#input.dispose();

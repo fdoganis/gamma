@@ -5,6 +5,7 @@ export type SoundHandle = {
 
 export interface ISoundEngine {
   createSource(id: string, context: AudioContext): SoundHandle | null;
+  prewarm?(context: AudioContext): void; // render all buffers ahead of first use
   activate?(): void;
   dispose?(): void;
 }

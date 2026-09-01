@@ -5,4 +5,5 @@
 
 import { Game } from './core/Game'
 const game = new Game();
+game.preload(); // synth the audio buffers up front, before the loop starts
 game.start();
