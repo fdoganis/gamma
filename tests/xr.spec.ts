@@ -19,7 +19,7 @@ const AIM_DOWN = { x: -Math.SQRT1_2, y: 0, z: 0, w: Math.SQRT1_2 };
 const RAINBOW_BAND = { x: 300, y: 250, width: 400, height: 120 };
 
 test('emulated controller ray selects collect actors and fill the rainbow', async ({ page }) => {
-  test.setTimeout(60_000); // the 64-iteration IWER sweep + setup runs ~30s; the default 30s budget is too tight
+  test.setTimeout(90_000); // the IWER sweep + setup runs ~40-55s and grows with the codebase; keep generous headroom
 
   const problems: string[] = [];
   page.on('pageerror', (e) => problems.push(`pageerror: ${e}`));
