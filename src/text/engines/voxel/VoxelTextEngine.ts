@@ -3,8 +3,13 @@ import type { Scene, PerspectiveCamera } from 'three';
 import type { ITransform } from '../../../types/ITransform';
 import type { ITextEngine, TextStyle } from '../../ITextEngine';
 import { InstancedPool } from '../../../rendering/InstancedPool';
-import { GLYPH_W, GLYPH_H, glyphRows, isLit } from './littleJsFont';
 import { UP } from './constants';
+import { GLYPH_SOURCE } from '../../../game.config';
+import type { IGlyphSource } from '../../glyphs/IGlyphSource';
+import { BitmapGlyphs } from '../../glyphs/BitmapGlyphs';
+import { LIGHT_FONT } from '../../glyphs/light-font';
+import { FULL_FONT } from '../../glyphs/full-font';
+import { CanvasGlyphs } from '../../glyphs/CanvasGlyphs';
 
 // Every label's voxels are indices into one shared InstancedPool (see
 // rendering/InstancedPool.ts) — allocating N indices, not spawning N
@@ -22,7 +27,6 @@ type VoxelHandle = {
 
 const BILLBOARD_TURN_RATE = 8; // 1/s; exponential turn-to-face — larger = snappier, smaller = slower
 
-const CHAR_ADVANCE = GLYPH_W + 1; // 1 column of spacing between glyphs
 const DEFAULT_FLOAT_HEIGHT_m = 0.08;
 const FULL_LABEL_COLOR = '#ff3333';
 const VOXEL_FILL = 0.75; // cube size as a fraction of the grid step: <1 leaves a visible gap between voxels
@@ -40,12 +44,19 @@ export class VoxelTextEngine implements ITextEngine {
   #pool: InstancedPool;
   #camera: PerspectiveCamera;
   #voxelSize: number;
+  #glyphs: IGlyphSource;
   #reportedFull = false;
 
   constructor(scene: Scene, camera: PerspectiveCamera, voxelSize = 0.008, maxInstances = 1024 * 1024) {
     this.#camera = camera;
     this.#voxelSize = voxelSize;
     this.#pool = new InstancedPool(scene, new BoxGeometry(1, 1, 1), maxInstances, new MeshPhongMaterial({ shininess: 200 }));
+    // GLYPH_SOURCE is a literal const — the branches not picked fold away and
+    // their font data / canvas code tree-shake out of the build.
+    this.#glyphs =
+      GLYPH_SOURCE === 'canvas' ? new CanvasGlyphs() :
+      GLYPH_SOURCE === 'full' ? new BitmapGlyphs(FULL_FONT) :
+      new BitmapGlyphs(LIGHT_FONT);
   }
 
   create(text: string, anchor?: ITransform, style?: TextStyle): VoxelHandle {
@@ -142,21 +153,12 @@ export class VoxelTextEngine implements ITextEngine {
     if (anchor) this.sync(handle, anchor, 0);
   }
 
-  // No canvas, no fillText: glyphs come straight from the packed table,
-  // so output is identical on every browser/OS/font-availability combination.
+  // Lit cells from the selected glyph source, scaled to voxel offsets, centred
+  // on the label origin, flipped so +y is up.
   #layout(text: string): Vector3[] {
-    const glyphs = text.split('').map(glyphRows).filter((g): g is number[] => !!g);
-    const width = glyphs.length * CHAR_ADVANCE - 1;
-    const originX = -width / 2;
+    const { cells, width, height } = this.#glyphs.layout(text);
     const s = this.#voxelSize;
-
-    const offsets: Vector3[] = [];
-    glyphs.forEach((rows, ci) => {
-      for (let y = 0; y < GLYPH_H; y++)
-        for (let x = 0; x < GLYPH_W; x++)
-          if (isLit(rows, x, y))
-            offsets.push(new Vector3((originX + ci * CHAR_ADVANCE + x) * s, (GLYPH_H - 1 - y) * s, 0));
-    });
-    return offsets;
+    const originX = -width / 2;
+    return cells.map(([col, row]) => new Vector3((originX + col) * s, (height - 1 - row) * s, 0));
   }
 }
