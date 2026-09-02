@@ -1,10 +1,11 @@
-import { BoxGeometry, Matrix4, Vector3, Quaternion, Color, MeshPhongMaterial } from 'three';
-import type { Scene, PerspectiveCamera } from 'three';
+import { BoxGeometry, Matrix4, Vector3, Quaternion, Color, MeshPhongMaterial, MeshMatcapMaterial } from 'three';
+import type { Scene, PerspectiveCamera, Material } from 'three';
 import type { ITransform } from '../../../types/ITransform';
 import type { ITextEngine, TextStyle } from '../../ITextEngine';
 import { InstancedPool } from '../../../rendering/InstancedPool';
 import { UP } from './constants';
-import { GLYPH_SOURCE } from '../../../game.config';
+import { makeMatcap } from './matcap';
+import { GLYPH_SOURCE, VOXEL_SHADING } from '../../../game.config';
 import type { IGlyphSource } from '../../glyphs/IGlyphSource';
 import { BitmapGlyphs } from '../../glyphs/BitmapGlyphs';
 import { LIGHT_FONT } from '../../glyphs/light-font';
@@ -50,7 +51,12 @@ export class VoxelTextEngine implements ITextEngine {
   constructor(scene: Scene, camera: PerspectiveCamera, voxelSize = 0.008, maxInstances = 1024 * 1024) {
     this.#camera = camera;
     this.#voxelSize = voxelSize;
-    this.#pool = new InstancedPool(scene, new BoxGeometry(1, 1, 1), maxInstances, new MeshPhongMaterial({ shininess: 200 }));
+    // VOXEL_SHADING is a literal const — the unpicked material (and, for phong,
+    // makeMatcap) folds away and tree-shakes.
+    const material: Material = VOXEL_SHADING === 'matcap'
+      ? new MeshMatcapMaterial({ matcap: makeMatcap() })
+      : new MeshPhongMaterial({ shininess: 200 });
+    this.#pool = new InstancedPool(scene, new BoxGeometry(1, 1, 1), maxInstances, material);
     // GLYPH_SOURCE is a literal const — the branches not picked fold away and
     // their font data / canvas code tree-shake out of the build.
     this.#glyphs =

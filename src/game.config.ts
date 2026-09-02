@@ -8,3 +8,9 @@
 //   'full'   — the whole 95-glyph LittleJS font
 //   'canvas' — rasterise the browser's monospace font, no glyph data shipped
 export const GLYPH_SOURCE: 'full' | 'light' | 'canvas' = 'light';
+
+// Voxel text shading:
+//   'matcap' — a tiny canvas-drawn matcap (bright face, dark rim) baked once;
+//              screen-consistent contrast, ignores scene lights
+//   'phong'  — MeshPhongMaterial lit by the scene (subtler, picks up the sky tint)
+export const VOXEL_SHADING: 'matcap' | 'phong' = 'matcap';
