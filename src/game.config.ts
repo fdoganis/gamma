@@ -10,7 +10,16 @@
 export const GLYPH_SOURCE: 'full' | 'light' | 'canvas' = 'light';
 
 // Voxel text shading:
-//   'matcap' — a tiny canvas-drawn matcap (bright face, dark rim) baked once;
-//              screen-consistent contrast, ignores scene lights
-//   'phong'  — MeshPhongMaterial lit by the scene (subtler, picks up the sky tint)
-export const VOXEL_SHADING: 'matcap' | 'phong' = 'matcap';
+//   'phong'  — MeshPhongMaterial lit by the scene (picks up the sky tint)
+//   'matcap' — a tiny canvas-drawn matcap, baked once; screen-consistent,
+//              ignores scene lights
+//   'env'    — MeshStandardMaterial (metallic) + a tiny hand-drawn env map;
+//              each voxel a chrome chip that glints as the head moves. Best
+//              paired with VOXEL_SHAPE 'octa'.
+export const VOXEL_SHADING: 'phong' | 'matcap' | 'env' = 'phong';
+
+// Voxel primitive:
+//   'box'  — BoxGeometry, the classic square "pixel"
+//   'octa' — OctahedronGeometry: varied normals, so matcap/env show real
+//            per-voxel form (a shaded gem)
+export const VOXEL_SHAPE: 'box' | 'octa' = 'box';

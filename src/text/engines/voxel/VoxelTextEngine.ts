@@ -1,11 +1,12 @@
-import { BoxGeometry, Matrix4, Vector3, Quaternion, Color, MeshPhongMaterial, MeshMatcapMaterial } from 'three';
-import type { Scene, PerspectiveCamera, Material } from 'three';
+import { BoxGeometry, OctahedronGeometry, Matrix4, Vector3, Quaternion, Color, MeshPhongMaterial, MeshMatcapMaterial, MeshStandardMaterial } from 'three';
+import type { Scene, PerspectiveCamera, Material, BufferGeometry } from 'three';
 import type { ITransform } from '../../../types/ITransform';
 import type { ITextEngine, TextStyle } from '../../ITextEngine';
 import { InstancedPool } from '../../../rendering/InstancedPool';
 import { UP } from './constants';
 import { makeMatcap } from './matcap';
-import { GLYPH_SOURCE, VOXEL_SHADING } from '../../../game.config';
+import { makeEnvMap } from './envmap';
+import { GLYPH_SOURCE, VOXEL_SHADING, VOXEL_SHAPE } from '../../../game.config';
 import type { IGlyphSource } from '../../glyphs/IGlyphSource';
 import { BitmapGlyphs } from '../../glyphs/BitmapGlyphs';
 import { LIGHT_FONT } from '../../glyphs/light-font';
@@ -51,12 +52,16 @@ export class VoxelTextEngine implements ITextEngine {
   constructor(scene: Scene, camera: PerspectiveCamera, voxelSize = 0.008, maxInstances = 1024 * 1024) {
     this.#camera = camera;
     this.#voxelSize = voxelSize;
-    // VOXEL_SHADING is a literal const — the unpicked material (and, for phong,
-    // makeMatcap) folds away and tree-shakes.
-    const material: Material = VOXEL_SHADING === 'matcap'
-      ? new MeshMatcapMaterial({ matcap: makeMatcap() })
-      : new MeshPhongMaterial({ shininess: 200 });
-    this.#pool = new InstancedPool(scene, new BoxGeometry(1, 1, 1), maxInstances, material);
+    // VOXEL_SHADING / VOXEL_SHAPE are literal consts — the unpicked material,
+    // geometry, and their texture builders fold away and tree-shake.
+    const material: Material =
+      VOXEL_SHADING === 'env' ? new MeshStandardMaterial({ envMap: makeEnvMap(), metalness: 1, roughness: 0.18 }) :
+      VOXEL_SHADING === 'matcap' ? new MeshMatcapMaterial({ matcap: makeMatcap() }) :
+      new MeshPhongMaterial({ shininess: 200 });
+    const geometry: BufferGeometry = VOXEL_SHAPE === 'octa'
+      ? new OctahedronGeometry(0.7, 0)
+      : new BoxGeometry(1, 1, 1);
+    this.#pool = new InstancedPool(scene, geometry, maxInstances, material);
     // GLYPH_SOURCE is a literal const — the branches not picked fold away and
     // their font data / canvas code tree-shake out of the build.
     this.#glyphs =
