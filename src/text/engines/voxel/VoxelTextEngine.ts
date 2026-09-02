@@ -15,9 +15,11 @@ import { CanvasGlyphs } from '../../glyphs/CanvasGlyphs';
 // rendering/InstancedPool.ts) — allocating N indices, not spawning N
 // primitives. destroy() frees them for reuse by the next label.
 //
-// With VOXEL_OUTLINE, each cell gets STRIDE=2 indices: a full-size dark copy
-// (indices[0..N)) and a smaller label-colour copy nudged toward the camera
-// (indices[N..2N)) — a read-against-anything outline, still one draw call.
+// With VOXEL_OUTLINE, each cell gets STRIDE=2 indices: the label-colour "sticker"
+// at the plain voxel size (indices[N..2N)), lifted a hair toward the camera, and
+// a slightly larger dark copy behind it (indices[0..N)) whose overhang reads as
+// an outline. The grid pitch grows to match so the enlarged cells keep their
+// gaps (the scanline look). Still one InstancedMesh / one draw call.
 type VoxelHandle = {
   indices: number[];
   offsets: Vector3[]; // one per cell, local pre-billboard, centred on the label origin
@@ -30,13 +32,14 @@ type VoxelHandle = {
 
 const STRIDE = VOXEL_OUTLINE ? 2 : 1;
 const OUTLINE_COLOR = new Color('#111');
-const FRONT_SCALE = 0.62;   // front copy size vs the dark back copy — the gap is the outline
-const FRONT_NUDGE = 0.5;    // move the front copy this many voxel-sizes toward the camera
+const OUTLINE_SCALE = 1.35;   // dark back copy vs the white sticker — the overhang is the outline
+const STICKER_LIFT = 0.08;    // sticker toward the camera, in voxel-sizes: beats z-fighting, doesn't float
+const PITCH = VOXEL_OUTLINE ? 1.35 : 1; // grid step grows with the enlarged cells so the gaps survive
 
 const BILLBOARD_TURN_RATE = 8; // 1/s; exponential turn-to-face
 const DEFAULT_FLOAT_HEIGHT_m = 0.08;
 const FULL_LABEL_COLOR = '#ff3333';
-const VOXEL_FILL = 0.75; // cube size as a fraction of the grid step: <1 leaves a visible gap between voxels
+const VOXEL_FILL = 0.75; // white voxel size as a fraction of the (unpitched) grid step: <1 keeps a visible gap
 
 // scratch — reused every sync(), nothing allocated per frame/label
 const _worldPos = new Vector3();
@@ -117,17 +120,18 @@ export class VoxelTextEngine implements ITextEngine {
     const s = h.visible ? this.#voxelSize * VOXEL_FILL : 0;
     const n = h.offsets.length;
     for (let k = 0; k < n; k++) {
-      // back copy (or the only copy)
+      // back copy: the dark outline (scaled up), or — without VOXEL_OUTLINE —
+      // the only copy at the plain voxel size.
       _instPos.copy(h.offsets[k]).applyQuaternion(h.facing).add(_worldPos);
-      _scaleVec.setScalar(s);
+      _scaleVec.setScalar(STRIDE === 2 ? s * OUTLINE_SCALE : s);
       _instMat.compose(_instPos, h.facing, _scaleVec);
       this.#pool.setMatrix(h.indices[k], _instMat);
 
       if (STRIDE === 2) {
-        // smaller front copy, nudged toward the camera
-        _instPos.set(h.offsets[k].x, h.offsets[k].y, this.#voxelSize * FRONT_NUDGE)
+        // white sticker at the plain voxel size, lifted a hair toward the camera
+        _instPos.set(h.offsets[k].x, h.offsets[k].y, this.#voxelSize * STICKER_LIFT)
           .applyQuaternion(h.facing).add(_worldPos);
-        _scaleVec.setScalar(s * FRONT_SCALE);
+        _scaleVec.setScalar(s);
         _instMat.compose(_instPos, h.facing, _scaleVec);
         this.#pool.setMatrix(h.indices[n + k], _instMat);
       }
@@ -184,9 +188,10 @@ export class VoxelTextEngine implements ITextEngine {
   }
 
   // Lit cells from the selected glyph source → voxel offsets, centred, +y up.
+  // PITCH widens the grid step so the outline's enlarged cells keep their gaps.
   #layout(text: string): Vector3[] {
     const { cells, width, height } = this.#glyphs.layout(text);
-    const s = this.#voxelSize;
+    const s = this.#voxelSize * PITCH;
     const originX = -width / 2;
     return cells.map(([col, row]) => new Vector3((originX + col) * s, (height - 1 - row) * s, 0));
   }
