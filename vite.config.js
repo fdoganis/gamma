@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
     return {
         base: "./",
         clearScreen: false,
-        define: { __DEV__: JSON.stringify(!isProd) }, // dev-only code folds to `if(false)` in prod → tree-shaken
+        define: { __DEV__: JSON.stringify(!isProd) }, // dev-only code folds to `if(false)` in prod -> tree-shaken
 
         resolve: {
             alias: {
