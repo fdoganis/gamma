@@ -3,7 +3,7 @@ import type { Scene, PerspectiveCamera, Material, BufferGeometry } from 'three';
 import type { ITransform } from '../../../types/ITransform';
 import type { ITextEngine, TextStyle } from '../../ITextEngine';
 import { InstancedPool } from '../../../rendering/InstancedPool';
-import { UP } from './constants';
+import { billboard } from '../billboard';
 import { makeMatcap } from './matcap';
 import { makeEnvMap } from './envmap';
 import { GLYPH_SOURCE, VOXEL_SHADING, VOXEL_SHAPE } from '../../../game.config';
@@ -27,17 +27,12 @@ type VoxelHandle = {
   hasFacing: boolean; // false until the first sync, so a fresh label snaps in instead of turning from identity
 };
 
-const BILLBOARD_TURN_RATE = 8; // 1/s; exponential turn-to-face — larger = snappier, smaller = slower
-
 const DEFAULT_FLOAT_HEIGHT_m = 0.08;
 const FULL_LABEL_COLOR = '#ff3333';
 const VOXEL_FILL = 0.75; // cube size as a fraction of the grid step: <1 leaves a visible gap between voxels
 
 // scratch — reused by every sync() call, nothing allocated per frame/label
 const _worldPos = new Vector3();
-const _eye = new Vector3();
-const _rotMat = new Matrix4();
-const _quat = new Quaternion();
 const _instMat = new Matrix4();
 const _instPos = new Vector3();
 const _scaleVec = new Vector3();
@@ -107,23 +102,7 @@ export class VoxelTextEngine implements ITextEngine {
     const h = handle as VoxelHandle;
     if (h.indices.length === 0) return;
 
-    _worldPos.setFromMatrixPosition(anchor.matrixWorld);
-    _worldPos.y += h.floatHeight;
-
-    // Y-locked (cylindrical) billboard: faces the camera horizontally, never
-    // tilts up/down, so the text stays upright and readable. For a full
-    // spherical billboard, drop the Y-lock and use camera.position directly.
-    _eye.set(this.#camera.position.x, _worldPos.y, this.#camera.position.z);
-    _rotMat.lookAt(_eye, _worldPos, UP);
-    _quat.setFromRotationMatrix(_rotMat); // target facing this frame
-
-    if (h.hasFacing) {
-      const t = 1 - Math.exp(-BILLBOARD_TURN_RATE * delta); // frame-rate-independent exponential ease // TODO: add to Easing?
-      h.facing.slerp(_quat, t);
-    } else {
-      h.facing.copy(_quat); // first sync: snap in rather than turning from identity
-      h.hasFacing = true;
-    }
+    billboard(h, anchor, this.#camera, delta, _worldPos);
 
     _scaleVec.setScalar(h.visible ? this.#voxelSize * VOXEL_FILL : 0);
     for (let i = 0; i < h.indices.length; i++) {
