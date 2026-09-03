@@ -3,6 +3,12 @@
 // engine edits this one file and gets a minimal bundle with no code deletion.
 // (Complements the `__DEV__` vite define, which is build-mode-tied.)
 
+// Text rendering engine:
+//   'voxel'   — bitmap-font glyphs as instanced voxel cubes (the default)
+//   'segment' — 16-segment retro-LED alphanumeric display; no glyph data, so a
+//               'segment' fork tree-shakes VoxelTextEngine + all of glyphs/
+export const TEXT_ENGINE: 'voxel' | 'segment' = 'voxel';
+
 // Glyph source for VoxelTextEngine:
 //   'light'  — ~38 glyphs (0-9 A-Z space + -), the game's charset, smallest
 //   'full'   — the whole 95-glyph LittleJS font

@@ -19,6 +19,8 @@ import { randomTransform, getQuery } from '../core/Utils';
 import { Haptics } from '../input/XRGamepadUtils';
 import { TextManager } from '../text/TextManager';
 import { VoxelTextEngine } from '../text/engines/voxel/VoxelTextEngine';
+import { SegmentTextEngine } from '../text/engines/segment/SegmentTextEngine';
+import { TEXT_ENGINE } from '../game.config';
 
 export class Game {
   #render: RenderingManager;
@@ -36,7 +38,12 @@ export class Game {
     this.#world = new World(this.#render.anchor, this.#audio);
     this.#haptics = new Haptics(this.#render.renderer);
     this.#input = new InputManager(this.#render.renderer, this.#render.scene, this.#render.camera, this.#render.anchor);
-    this.#text = new TextManager(new VoxelTextEngine(this.#render.scene, this.#render.camera));
+    // TEXT_ENGINE is a literal const — rolldown folds the compare and the
+    // unpicked engine (plus, for 'segment', all the voxel glyph data) shakes out.
+    const textEngine = TEXT_ENGINE === 'segment'
+      ? new SegmentTextEngine(this.#render.scene, this.#render.camera)
+      : new VoxelTextEngine(this.#render.scene, this.#render.camera);
+    this.#text = new TextManager(textEngine);
 
     this.#sm = this.#buildStateMachine();
 
