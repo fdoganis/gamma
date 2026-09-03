@@ -1,19 +1,23 @@
 // The rainbow the colors were stolen from: seven half-torus arcs standing over
-// the board, in real rainbow order — RAINBOW[0] (red) is the OUTERMOST arc,
-// violet the innermost. Each arc is a per-color fill gauge: a desaturated tint
-// of its own color at 0, the full ROYGBIV color at 1 (fill = count / N). All
-// seven full = round won. Generic: it is told "arc i is `fill` full".
+// the board, in real order — RAINBOW[0] (red) outermost, violet innermost. Each
+// ring is an Apple-Watch-style gauge: a dim desaturated **track** always shows
+// the ring's identity, and a full-colour **fill** arc sweeps thetaLength = π·fill
+// over it (fill = count / N for the level). All seven full = round won.
 import { Mesh, MeshBasicMaterial, TorusGeometry, Color } from 'three';
 import type { Object3D } from 'three';
 import { RAINBOW } from '../core/palette';
 
 const ARCS = RAINBOW.length;
 const INNER_R_m = 0.26;
-const GAP_m = 0.022;   // radial spacing between arcs
-const TUBE_m = 0.012;
-const Z_OFF_m = -0.15; // sit toward the far edge, so actors are in front of it
-const TRACK_S = 0.2;   // an unlit arc: same hue, near-flat saturation/lightness
+const GAP_m = 0.022;      // radial spacing between rings
+const TRACK_TUBE_m = 0.012;
+const FILL_TUBE_m = 0.015; // fatter, so the fill covers the track where present
+const RADIAL_SEG = 8;
+const TUBULAR_SEG = 44;
+const Z_OFF_m = -0.15;    // sit toward the far edge, so actors are in front
+const TRACK_S = 0.2;      // an unlit track: same hue, near-flat saturation/lightness
 const TRACK_L = 0.52;
+const EMPTY = 1e-4;       // ~zero sweep for an unfilled arc
 
 const _hsl = { h: 0, s: 0, l: 0 };
 const _target = RAINBOW.map((hex) => new Color(hex));
@@ -21,34 +25,54 @@ const _track = _target.map((c) => (c.getHSL(_hsl), new Color().setHSL(_hsl.h, TR
 
 export class Rainbow {
   #root: Object3D;
-  #arcs: Mesh<TorusGeometry, MeshBasicMaterial>[] = [];
+  #fills: Mesh<TorusGeometry, MeshBasicMaterial>[] = [];
+  #tracks: Mesh<TorusGeometry, MeshBasicMaterial>[] = [];
+  #radii: number[] = [];
 
   constructor(root: Object3D) {
     this.#root = root;
     for (let i = 0; i < ARCS; i++) {
-      // TorusGeometry arc = PI → upper half: feet at (±R, 0, 0), apex at (0, R, 0).
-      const geo = new TorusGeometry(INNER_R_m + (ARCS - 1 - i) * GAP_m, TUBE_m, 8, 40, Math.PI);
-      const arc = new Mesh(geo, new MeshBasicMaterial({ color: _track[i] }));
-      arc.position.z = Z_OFF_m;
-      root.add(arc);
-      this.#arcs.push(arc);
+      const r = INNER_R_m + (ARCS - 1 - i) * GAP_m;
+      this.#radii.push(r);
+
+      // TorusGeometry arc = PI → upper half; the sweep starts at the +X foot.
+      const track = new Mesh(
+        new TorusGeometry(r, TRACK_TUBE_m, RADIAL_SEG, TUBULAR_SEG, Math.PI),
+        new MeshBasicMaterial({ color: _track[i] }),
+      );
+      track.position.z = Z_OFF_m;
+      this.#root.add(track);
+      this.#tracks.push(track);
+
+      const fill = new Mesh(
+        new TorusGeometry(r, FILL_TUBE_m, RADIAL_SEG, TUBULAR_SEG, EMPTY),
+        new MeshBasicMaterial({ color: _target[i] }),
+      );
+      fill.position.z = Z_OFF_m;
+      fill.renderOrder = 1;
+      fill.visible = false;
+      this.#root.add(fill);
+      this.#fills.push(fill);
     }
   }
 
-  // fill 0..1 — lerp the arc from its unlit tint toward its color; snap full at >= 1.
+  // fill 0..1 — regrow the coloured arc to thetaLength = π·fill. Fires only on a
+  // collect / unicorn snatch, so rebuilding the little geometry is cheap.
   setFill(i: number, fill: number): void {
-    const arc = this.#arcs[i];
+    const arc = this.#fills[i];
     if (!arc) return;
-    if (fill >= 1) arc.material.color.copy(_target[i]);
-    else arc.material.color.lerpColors(_track[i], _target[i], Math.max(0, fill));
+    const f = Math.min(1, Math.max(0, fill));
+    arc.visible = f > 0;
+    arc.geometry.dispose();
+    arc.geometry = new TorusGeometry(this.#radii[i], FILL_TUBE_m, RADIAL_SEG, TUBULAR_SEG, Math.PI * f || EMPTY);
   }
 
   reset(): void {
-    for (let i = 0; i < ARCS; i++) this.#arcs[i].material.color.copy(_track[i]);
+    for (let i = 0; i < ARCS; i++) this.setFill(i, 0);
   }
 
   dispose(): void {
-    for (const arc of this.#arcs) {
+    for (const arc of [...this.#tracks, ...this.#fills]) {
       this.#root.remove(arc);
       arc.geometry.dispose();
       arc.material.dispose();
