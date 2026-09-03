@@ -44,7 +44,7 @@ export class World {
     const mesh = this.#actors.spawn(this.#board.holeAt(hole), colorHex, hold, tag, decoy);
     if (!mesh) return;
     try {
-      this.#audio.playSFX('spawn');
+      this.#audio.playAt(mesh, 'spawn'); // the pop comes from the hole
     } catch {
       // audio can fail in restricted/sandboxed contexts — the body still appears
     }
@@ -61,12 +61,14 @@ export class World {
   hit(ray: Ray, radius = PROXIMITY_R_m): RemovedActor | null {
     const h = this.#actors.hitTest(ray, radius);
     if (!h) return null;
+    const mesh = this.#actors.meshOf(h.id); // grab it before despawn — sound plays from the hole
     if (h.decoy) {
       this.#sparkles.burst(h.position, DECOY_PUFF, 'explode');
-      try { this.#audio.playSFX('unicorn'); } catch { /* audio may be unavailable */ }
+      if (mesh) try { this.#audio.playAt(mesh, 'unicorn'); } catch { /* audio may be unavailable */ }
       return { tag: h.tag, color: DECOY_PUFF, position: h.position };
     }
-    return this.#collect(this.#actors.despawn(h.id));
+    if (mesh) try { this.#audio.playAt(mesh, 'hit'); } catch { /* audio may be unavailable */ }
+    return this.#collect(this.#actors.despawn(h.id), true);
   }
 
   // Collect a random live actor — keyboard fallback with no real aim.
@@ -74,13 +76,17 @@ export class World {
     return this.#collect(this.#actors.despawnAny());
   }
 
-  #collect(removed: RemovedActor | null): RemovedActor | null {
+  // `positioned` = a positional 'hit' was already emitted (World.hit); the
+  // keyboard fallback has no location so it falls back to a flat cue.
+  #collect(removed: RemovedActor | null, positioned = false): RemovedActor | null {
     if (!removed) return null;
     this.#sparkles.burst(removed.position, removed.color, 'explode');
-    try {
-      this.#audio.playSFX('hit');
-    } catch {
-      // audio may be unavailable
+    if (!positioned) {
+      try {
+        this.#audio.playSFX('hit');
+      } catch {
+        // audio may be unavailable
+      }
     }
     return removed;
   }

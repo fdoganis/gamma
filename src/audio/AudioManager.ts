@@ -44,6 +44,18 @@ export class AudioManager {
     handle.output.connect(this.#listener.getInput());
   }
 
+  // One-shot positional cue emitted from `source` (an actor mesh): attach a
+  // PositionalAudio, play, and tear the emitter down when the sound ends.
+  playAt(source: Object3D, id: string): void {
+    if (this.#muted) { return; }
+
+    const pa = this.attach(source);
+    const handle = this.#engine.createSource(id, this.context);
+    if (!handle) { pa.removeFromParent(); return; }
+    pa.setNodeSource(handle.output);
+    handle.source.onended = () => { handle.output.disconnect(); pa.removeFromParent(); };
+  }
+
   // Creates a PositionalAudio permanently parented to `source`. For an
   // emitter that outlives any single sound (a cone's hit/idle SFX): call
   // once at spawn, keep the returned node, trigger() it as many times as

@@ -113,6 +113,12 @@ export class Actors {
       : null;
   }
 
+  // The live mesh for an id (so World can emit a positional sound from it before
+  // despawn). undefined if the actor is already gone.
+  meshOf(id: number): Mesh<CylinderGeometry, MeshPhongMaterial> | undefined {
+    return this.#em.find((x) => x.id === id)?.mesh;
+  }
+
   // Remove one actor now (a collect / hit). Returns its tag + color + last position.
   despawn(id: number): RemovedActor | null {
     const a = this.#em.find((x) => x.id === id);
