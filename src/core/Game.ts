@@ -88,16 +88,15 @@ export class Game {
   }
 
   #bindInput(): void {
-    const { xrLeft, xrRight, handLeft, handRight, gamepadLeft, gamepadRight, gamepadPool } = this.#input;
+    const { xrLeft, xrRight, handLeft, handRight, gamepadPool } = this.#input;
 
     xrLeft.bind('select', new SelectCommand(xrLeft.node, 'left'));
     xrRight.bind('select', new SelectCommand(xrRight.node, 'right'));
     handLeft.bind('pinchend', new SelectCommand(handLeft.node, 'left'));
     handRight.bind('pinchend', new SelectCommand(handRight.node, 'right'));
 
-    gamepadLeft.bind(3, new SelectCommand(xrLeft.node, 'left'));
-    gamepadRight.bind(3, new SelectCommand(xrRight.node, 'right'));
-
+    // The XR controller trigger already emits `select` above; a real (non-XR)
+    // gamepad still routes through gamepadPool.
     gamepadPool.onConnect((pad) => pad.bind(0, new SelectCommand(randomTransform())));
   }
 
