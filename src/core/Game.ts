@@ -2,6 +2,7 @@ import { GameLoop } from './GameLoop';
 import { StateMachine } from './StateMachine';
 import { Score } from './Score';
 import { Level } from './Level';
+import { HiScore } from './HiScore';
 import { RenderingManager } from '../rendering/RenderingManager';
 import { InputManager } from '../input/InputManager';
 import { AudioManager } from '../audio/AudioManager';
@@ -18,6 +19,7 @@ import { GameOverState } from '../states/GameOverState';
 import { randomTransform, getQuery } from '../core/Utils';
 import { Haptics } from '../input/XRGamepadUtils';
 import { TextManager } from '../text/TextManager';
+import type { TextHandle } from '../text/ITextEngine';
 import { VoxelTextEngine } from '../text/engines/voxel/VoxelTextEngine';
 import { SegmentTextEngine } from '../text/engines/segment/SegmentTextEngine';
 import { TEXT_ENGINE } from '../game.config';
@@ -30,6 +32,11 @@ export class Game {
   #text: TextManager
   #sm: StateMachine;
   #haptics: Haptics;
+  #score = new Score();
+  #level = new Level();
+  #hiScore = new HiScore();
+  #hiLabel: TextHandle;
+  #hiShown = -1;
 
 
   constructor() {
@@ -45,6 +52,10 @@ export class Game {
       : new VoxelTextEngine(this.#render.scene, this.#render.camera);
     this.#text = new TextManager(textEngine);
 
+    // Persistent HUD: the all-time best, shown everywhere. Game.update() ticks it
+    // to max(hiScore, live score) so it climbs in real time while you beat it.
+    this.#hiLabel = this.#text.show('HI 0', this.#render.hiAnchor);
+
     this.#sm = this.#buildStateMachine();
 
 
@@ -57,8 +68,7 @@ export class Game {
   // camera, so the running state is testable on plain desktop without WebXR.
   #buildStateMachine(): StateMachine {
     const sm = new StateMachine();
-    const score = new Score();
-    const level = new Level();
+    const score = this.#score, level = this.#level;
     sm.register(IntroState, new IntroState(sm, this.#text, this.#render.hudAnchor, score, level));
     sm.register(AnchorState, new AnchorState(this.#render, sm));
     sm.register(RunState, new RunState(this.#world, this.#audio, this.#haptics, sm, this.#text, this.#render, score, level));
@@ -97,6 +107,9 @@ export class Game {
   update(delta: number, frame?: XRFrame) {
     this.#sm.update(delta, frame);
     this.#text.update(delta); // labels are global, not owned by the active state
+
+    const hi = Math.max(this.#hiScore.score, this.#score.value);
+    if (hi !== this.#hiShown) { this.#hiShown = hi; this.#text.setText(this.#hiLabel, `HI ${hi}`); }
   }
 
   render() { this.#render.render(); }

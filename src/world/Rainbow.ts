@@ -8,13 +8,14 @@ import type { Object3D } from 'three';
 import { RAINBOW } from '../core/palette';
 
 const ARCS = RAINBOW.length;
-const INNER_R_m = 0.26;
+const INNER_R_m = 0.34;   // outer arc foot lands ~6cm clear of the ±0.41 hole field
 const GAP_m = 0.022;      // radial spacing between rings
 const TRACK_TUBE_m = 0.012;
 const FILL_TUBE_m = 0.015; // fatter, so the fill covers the track where present
 const RADIAL_SEG = 8;
 const TUBULAR_SEG = 44;
-const Z_OFF_m = -0.15;    // sit toward the far edge, so actors are in front
+const Y_OFF_m = 0.05;     // float the whole arc above the table
+const Z_OFF_m = -0.2;     // behind the back hole row, arcing over the field
 const TRACK_S = 0.2;      // an unlit track: same hue, near-flat saturation/lightness
 const TRACK_L = 0.52;
 const EMPTY = 1e-4;       // ~zero sweep for an unfilled arc
@@ -40,7 +41,7 @@ export class Rainbow {
         new TorusGeometry(r, TRACK_TUBE_m, RADIAL_SEG, TUBULAR_SEG, Math.PI),
         new MeshBasicMaterial({ color: _track[i] }),
       );
-      track.position.z = Z_OFF_m;
+      track.position.set(0, Y_OFF_m, Z_OFF_m);
       this.#root.add(track);
       this.#tracks.push(track);
 
@@ -48,7 +49,7 @@ export class Rainbow {
         new TorusGeometry(r, FILL_TUBE_m, RADIAL_SEG, TUBULAR_SEG, EMPTY),
         new MeshBasicMaterial({ color: _target[i] }),
       );
-      fill.position.z = Z_OFF_m;
+      fill.position.set(0, Y_OFF_m, Z_OFF_m);
       fill.renderOrder = 1;
       fill.visible = false;
       this.#root.add(fill);
@@ -56,13 +57,15 @@ export class Rainbow {
     }
   }
 
-  // fill 0..1 — regrow the coloured arc to thetaLength = π·fill. Fires only on a
-  // collect / unicorn snatch, so rebuilding the little geometry is cheap.
+  // fill 0..1 — regrow the coloured arc to thetaLength = π·fill and offset it so
+  // it hugs the LEFT foot and sweeps rightward (clockwise as seen). Fires only
+  // on a collect / unicorn snatch, so rebuilding the little geometry is cheap.
   setFill(i: number, fill: number): void {
     const arc = this.#fills[i];
     if (!arc) return;
     const f = Math.min(1, Math.max(0, fill));
     arc.visible = f > 0;
+    arc.rotation.z = Math.PI * (1 - f); // arc [0, πf] shifted to [π(1-f), π] = left side, growing right
     arc.geometry.dispose();
     arc.geometry = new TorusGeometry(this.#radii[i], FILL_TUBE_m, RADIAL_SEG, TUBULAR_SEG, Math.PI * f || EMPTY);
   }
