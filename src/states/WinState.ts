@@ -6,8 +6,10 @@ import type { TextManager } from '../text/TextManager';
 import type { TextHandle } from '../text/ITextEngine';
 import { SelectCommand } from '../commands/SelectCommand';
 import { IntroState } from './IntroState';
+import { NameEntryState } from './NameEntryState';
 import type { Score } from '../core/Score';
 import type { Level } from '../core/Level';
+import type { HiScore } from '../core/HiScore';
 import { LEVEL_COUNT } from '../core/levels';
 import type { AudioManager } from '../audio/AudioManager';
 
@@ -20,16 +22,18 @@ export class WinState extends State {
   #text: TextManager;
   #score: Score;
   #level: Level;
+  #hi: HiScore;
   #resume: ClassOf<State>; // RunState, injected to avoid an import cycle
   #audio: AudioManager;
   #message: TextHandle;
 
-  constructor(sm: ITransition, text: TextManager, hudAnchor: ITransform, score: Score, level: Level, resume: ClassOf<State>, audio: AudioManager) {
+  constructor(sm: ITransition, text: TextManager, hudAnchor: ITransform, score: Score, level: Level, hi: HiScore, resume: ClassOf<State>, audio: AudioManager) {
     super();
     this.#sm = sm;
     this.#text = text;
     this.#score = score;
     this.#level = level;
+    this.#hi = hi;
     this.#resume = resume;
     this.#audio = audio;
     this.#message = text.show('YOU WIN', hudAnchor, { color: '#00ff88', visible: false });
@@ -41,7 +45,10 @@ export class WinState extends State {
   }
 
   #onSelect = () => {
-    this.#sm.change(this.#level.value <= LEVEL_COUNT ? this.#resume : IntroState);
+    this.#sm.change(
+      this.#level.value <= LEVEL_COUNT ? this.#resume
+        : this.#hi.beaten(this.#score.value) ? NameEntryState : IntroState,
+    );
   };
 
   override enter() {

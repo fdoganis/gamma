@@ -16,6 +16,7 @@ import { AnchorState } from '../states/AnchorState';
 import { RunState } from '../states/RunState';
 import { WinState } from '../states/WinState';
 import { GameOverState } from '../states/GameOverState';
+import { NameEntryState } from '../states/NameEntryState';
 import { randomTransform, getQuery } from '../core/Utils';
 import { Haptics } from '../input/XRGamepadUtils';
 import { TextManager } from '../text/TextManager';
@@ -72,8 +73,9 @@ export class Game {
     sm.register(IntroState, new IntroState(sm, this.#text, this.#render.hudAnchor, score, level));
     sm.register(AnchorState, new AnchorState(this.#render, sm));
     sm.register(RunState, new RunState(this.#world, this.#audio, this.#haptics, sm, this.#text, this.#render, score, level));
-    sm.register(WinState, new WinState(sm, this.#text, this.#render.hudAnchor, score, level, RunState, this.#audio));
-    sm.register(GameOverState, new GameOverState(sm, this.#text, this.#render.hudAnchor, score, this.#audio));
+    sm.register(WinState, new WinState(sm, this.#text, this.#render.hudAnchor, score, level, this.#hiScore, RunState, this.#audio));
+    sm.register(GameOverState, new GameOverState(sm, this.#text, this.#render.hudAnchor, score, this.#hiScore, this.#audio));
+    sm.register(NameEntryState, new NameEntryState(sm, this.#text, this.#render, score, this.#hiScore));
 
     const debugRun = __DEV__ && 'run' in getQuery();
     if (debugRun) {

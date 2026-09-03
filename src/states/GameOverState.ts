@@ -5,7 +5,9 @@ import type { TextManager } from '../text/TextManager';
 import type { TextHandle } from '../text/ITextEngine';
 import { SelectCommand } from '../commands/SelectCommand';
 import { IntroState } from './IntroState';
+import { NameEntryState } from './NameEntryState';
 import type { Score } from '../core/Score';
+import type { HiScore } from '../core/HiScore';
 import type { AudioManager } from '../audio/AudioManager';
 
 
@@ -13,14 +15,16 @@ export class GameOverState extends State {
   #sm: ITransition;
   #text: TextManager;
   #score: Score;
+  #hi: HiScore;
   #audio: AudioManager;
   #message: TextHandle;
 
-  constructor(sm: ITransition, text: TextManager, hudAnchor: ITransform, score: Score, audio: AudioManager) {
+  constructor(sm: ITransition, text: TextManager, hudAnchor: ITransform, score: Score, hi: HiScore, audio: AudioManager) {
     super();
     this.#sm = sm;
     this.#text = text;
     this.#score = score;
+    this.#hi = hi;
     this.#audio = audio;
     this.#message = text.show('GAME OVER', hudAnchor, { color: '#ff3333', visible: false });
     this.#registerHandlers();
@@ -30,7 +34,9 @@ export class GameOverState extends State {
     this.on(SelectCommand, this.#onSelect);
   }
 
-  #onSelect = () => { this.#sm.change(IntroState); };
+  #onSelect = () => {
+    this.#sm.change(this.#hi.beaten(this.#score.value) ? NameEntryState : IntroState);
+  };
 
   override enter() {
     this.#audio.activate(); // RunState.exit() deactivated it; the sting needs it back
