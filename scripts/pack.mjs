@@ -26,6 +26,7 @@
 // 1 ≈ 3s; 2 is a much longer search for a few more bytes — use it for a release.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { transformSync } from '@babel/core';
+import { minify } from 'terser';
 import { Packer } from 'roadroller';
 
 const FILE = 'dist/index.html';
@@ -60,10 +61,24 @@ const stripped = transformSync(tag[1], {
   plugins: [stripPrivateFields],
 }).code;
 
-const imp = stripped.match(/import\{([^}]*)\}from"three";/);
+// Second minify pass. The point is `mangle.properties` — rolldown won't rename
+// object properties (it can't prove that's safe), but every former #private is
+// now `_name$N`, and nothing else in the bundle uses a leading underscore
+// (checked: no `._foo` accesses survive from three/addons), so `/^_/` renames
+// exactly our own members and nothing three.js or the DOM can see. Costs ~0
+// risk, saves ~185 B zipped. `unsafe` compress options were measured at only
+// 45 B more and are not worth it.
+const minified = (await minify(stripped, {
+  module: true,
+  compress: { passes: 3 },
+  mangle: { toplevel: true, properties: { regex: /^_/ } },
+  format: { comments: false },
+})).code;
+
+const imp = minified.match(/import\s*\{([^}]*)\}\s*from\s*"three";?/);
 if (!imp) throw new Error('pack: expected a single `import{...}from"three"` — bundle shape changed');
 const bindings = imp[1].replace(/ as /g, ':'); // `A as e,B as t` -> destructure `{A:e,B:t}`
-const source = `(async()=>{const{${bindings}}=await import("three");\n${stripped.replace(imp[0], '')}\n})()`;
+const source = `(async()=>{const{${bindings}}=await import("three");\n${minified.replace(imp[0], '')}\n})()`;
 
 const packer = new Packer([{ data: source, type: 'js', action: 'eval' }], {});
 await packer.optimize(LEVEL);
