@@ -21,19 +21,18 @@ Use `?calib` unless it won't start.
 
 - `brew install cloudflared` — anonymous HTTPS tunnel, no account. WebXR needs a
   secure context, so a plain `http://<mac-ip>:5173` from the headset won't work.
-- Quest: **Settings → Movement Tracking → Hand and Body Tracking → On**. For
-  `?calib` to place the board on your desk rather than the floor, run a **Space
-  Setup that includes furniture** so the desk is a detected plane.
+- Quest: **Settings → Movement Tracking → Hand and Body Tracking → On**. (No
+  Space Setup / furniture scan needed — `?calib` places the board from your
+  hand, not hit-test.)
 
 ## Run `?calib`
 
 1. Mac, terminal 1: `npm run dev`
 2. Mac, terminal 2: `npm run cloud` → copy the `https://<words>.trycloudflare.com` line
 3. Quest Browser → `https://<words>.trycloudflare.com/?calib` → **START XR**
-4. **Place the board:** point at your desk, a ring reticle appears on any
-   surface in your room model → pinch to drop the board there. No reticle after
-   ~3 s (no scanned surface / hit-test unavailable) → it auto-drops on the floor
-   0.6 m ahead; put a box there or just whack the floor.
+4. **Place the board:** HUD reads `HAND ON TABLE - PINCH`. Rest your hand flat
+   on the tabletop and pinch — the board snaps to that height. (Don't pinch
+   within ~12 s and it just keeps the default height.)
 5. **Phase 1 — 12 whacks.** A green cube rises from a hole; slap it down onto
    the surface → it bursts, HUD `WHACK 1`, next cube. Vary it: hard/fast,
    slower-deliberate; flat palm, a couple karate-chops, a couple fingers-first.
@@ -43,9 +42,9 @@ Use `?calib` unless it won't start.
 6. **Phase 2 — ~15 s of non-whacks.** HUD `WAVE REACH REST - DO NOT HIT` +
    countdown. Glide the hand sideways at surface height, reach across, lower it
    slowly to rest. **Don't strike.** This is the false-positive data.
-7. **Phase 3.** HUD `DONE - PRESS MENU`. Press the **Meta button** (right
-   controller) or the palm-menu gesture to exit XR. On exit the capture
-   auto-POSTs to the dev server → `tests/fixtures/calib-<ts>.json`
+7. **Phase 3.** HUD `DONE - PINCH TO SAVE`. Pinch → it POSTs the capture to the
+   dev server (`SAVED - EXIT XR`), then exit XR however you like. Exiting XR
+   without pinching also saves (backstop). File: `tests/fixtures/calib-<ts>.json`
    (`[record-sink] saved …` in terminal 1).
 
 Run it 2–3 times; one file gets us going. Each session is a new file.
@@ -77,4 +76,4 @@ file.
 | `npm run cloud`: command not found | `brew install cloudflared` |
 | page won't load over the tunnel | the tunnel URL changed — use the newest `npm run cloud` line |
 | nothing saved on the Mac | both terminals + tunnel still up? use `xr-hand-recorder.html` → Download |
-| board is on the floor, wanted the desk | desk isn't a detected plane — redo Space Setup with furniture |
+| board is too low / high | you pinched with your hand not flat on the table — reload and redo the place step |
