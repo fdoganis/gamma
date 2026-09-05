@@ -76,12 +76,10 @@ export class Game {
     const debugRun = __DEV__ && 'run' in q;
     const debugName = __DEV__ && 'name' in q;   // jump straight to NameEntryState
     const debugL13 = __DEV__ && 'l13' in q;     // jump straight into the level 13 run
-    const debugCalib = __DEV__ && 'calib' in q; // hand-whack calibration — Anchor → CalibState
+    const debugCalib = __DEV__ && 'calib' in q; // hand-whack calibration (CalibState)
 
     sm.register(IntroState, new IntroState(sm, this.#text, this.#render.hudAnchor, score, level));
-    const anchor = new AnchorState(this.#render, sm);
-    if (debugCalib) anchor.next = CalibState; // place the board, then calibrate on it
-    sm.register(AnchorState, anchor);
+    sm.register(AnchorState, new AnchorState(this.#render, sm));
     sm.register(RunState, new RunState(this.#world, this.#audio, this.#haptics, sm, this.#text, this.#render, score, level));
     sm.register(WinState, new WinState(sm, this.#text, this.#render.hudAnchor, score, level, this.#hiScore, RunState, this.#audio));
     sm.register(GameOverState, new GameOverState(sm, this.#text, this.#render.hudAnchor, score, this.#hiScore, this.#audio));
@@ -95,7 +93,7 @@ export class Game {
     }
     if (debugL13) level.set(13);
     sm.start(
-      debugCalib ? AnchorState : // → CalibState once placed (or after the dev floor-skip)
+      debugCalib ? CalibState : // its own hand-on-surface placement step
       debugName ? NameEntryState :
       debugRun || debugL13 ? RunState :
       IntroState,

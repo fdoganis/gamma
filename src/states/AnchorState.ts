@@ -1,17 +1,14 @@
 import { Mesh, MeshBasicMaterial, RingGeometry } from 'three';
 import { State } from '../core/State';
 import type { ITransition } from '../core/StateMachine';
-import type { ClassOf } from '../types/ClassOf';
 import type { RenderingManager } from '../rendering/RenderingManager';
 import { SelectCommand } from '../commands/SelectCommand';
 import { RunState } from './RunState';
 
 const FLOOR_DIST_m = 0.6; // where the board lands when placed on the floor
-const DEV_SKIP_S = 3;     // dev/test: no reticle after this long → floor-place and go
+const DEV_SKIP_S = 8;     // dev/test only: no reticle ever → floor-place and go
 
 export class AnchorState extends State {
-  next: ClassOf<State> = RunState; // successor once placed — CalibState for ?calib
-
   #render: RenderingManager;
   #sm: ITransition;
   #reticle: Mesh;
@@ -60,7 +57,7 @@ export class AnchorState extends State {
 
   #advance() {
     this.#done = true;
-    this.#sm.change(this.next);
+    this.#sm.change(RunState);
   }
 
   override update(delta: number, frame?: XRFrame) {

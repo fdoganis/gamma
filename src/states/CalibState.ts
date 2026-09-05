@@ -1,12 +1,14 @@
-// Dev-only (`?calib`): guided hand-whack calibration. Reuses the gameplay scene
-// — a target body rises from a hole, you whack it, the next one rises — while
-// every frame's palm / wrist / index-tip joint poses are logged, tagged by
-// phase, with the target position stamped on each hit frame. Phase 1: whack the
-// cube N times (auto-paced so it advances even if the current thresholds are
-// mistuned). Phase 2: a fixed window of NON-whack motion (wave, reach, rest) for
-// false-positive data. Phase 3: press the headset menu button — `sessionend`
-// POSTs the capture to the dev server (vite.config.js /__record sink), landing
-// in tests/fixtures/. The whole class folds out of the shipped bundle.
+// Dev-only (`?calib`): guided hand-whack calibration. Reuses the gameplay scene.
+// Phase 'place': rest your hand flat on the surface and pinch — the board drops
+// to that height (hand tracking, not hit-test, so it works on a Quest 2 whose
+// table isn't a scanned plane). Phase 'whack': a target body rises from a hole,
+// you whack it, the next rises — N times, auto-paced so it advances even if the
+// current thresholds are mistuned. Phase 'idle': a fixed window of NON-whack
+// motion (wave, reach, rest) for false-positive data. Phase 'done': pinch to
+// save, or just exit XR — either way the capture is POSTed to the dev server
+// (vite.config.js /__record sink) and lands in tests/fixtures/. Every frame's
+// palm / wrist / index-tip joint poses are logged, tagged by phase, target
+// position stamped on hit frames. The whole class folds out of the shipped bundle.
 //
 // Full run guide (headset setup, tunnel, what to record): tests/tools/README.md
 import { Vector3 } from 'three';
@@ -23,13 +25,15 @@ const HOLES = [0, 1, 4, 5];                                  // middle row
 const JOINTS = ['middle-finger-metacarpal', 'wrist', 'index-finger-tip'] as const;
 const KEY = ['m', 'w', 'i'] as const;
 const WHACK_TARGETS = 12;
-const WHACK_WINDOW_S = 2.5;                                  // paced fallback advance
+const WHACK_WINDOW_S = 2.5;   // paced fallback advance
 const IDLE_S = 15;
-const TARGET_HEX = RAINBOW[3];                               // green — "hit this"
+const PLACE_TIMEOUT_S = 12;   // in a real session: give up waiting for the pinch, keep current height
+const PLACE_Z_m = -0.5;
+const TARGET_HEX = RAINBOW[3]; // green — "hit this"
 
 const r4 = (n: number) => Math.round(n * 1e4) / 1e4;
 
-type Phase = 'whack' | 'idle' | 'done';
+type Phase = 'place' | 'whack' | 'idle' | 'done';
 type Frame = { t: number; hand: string; phase: Phase; m: number[]; w: number[]; i: number[]; r: number; hit?: number[] };
 
 export class CalibState extends State {
@@ -38,12 +42,14 @@ export class CalibState extends State {
   #text: TextManager;
   #render: RenderingManager;
 
-  #phase: Phase = 'whack';
+  #phase: Phase = 'place';
   #frames: Frame[] = [];
   #t0 = 0;
   #count = 0;
   #windowT = 0;
+  #placeT = 0;
   #idleLeft = IDLE_S;
+  #lastPalmY: number | null = null; // most recent metacarpal world Y — used to place the board
   #targetId = -1;
   #targetPos = new Vector3();
   #hud: TextHandle | null = null;
@@ -59,16 +65,35 @@ export class CalibState extends State {
   }
 
   override enter() {
-    this.#phase = 'whack';
+    this.#phase = 'place';
     this.#frames = [];
     this.#t0 = performance.now();
     this.#count = 0;
     this.#windowT = 0;
+    this.#placeT = 0;
     this.#idleLeft = IDLE_S;
+    this.#lastPalmY = null;
     this.#sent = false;
-    this.#hud = this.#text.show('WHACK THE CUBE', this.#render.timerAnchor, { color: '#ffffff' });
-    this.#spawnTarget();
+    this.#hud = this.#text.show('HAND ON TABLE - PINCH', this.#render.timerAnchor, { color: '#ffffff' });
     this.#render.renderer.xr.addEventListener('sessionend', this.#onEnd);
+  }
+
+  #onSelect = () => {
+    if (this.#phase === 'place') { this.#placeBoard(); this.#toWhack(); }
+    else if (this.#phase === 'whack') this.#advance(true);
+    else if (this.#phase === 'done') { void this.#send(); this.#setHud('SAVED - EXIT XR'); }
+  };
+
+  #placeBoard() {
+    if (this.#lastPalmY == null) return; // no hand seen (desktop) — keep the hacked height
+    this.#render.anchor.position.set(0, this.#lastPalmY - 0.02, PLACE_Z_m);
+    this.#render.anchor.quaternion.identity();
+  }
+
+  #toWhack() {
+    this.#phase = 'whack';
+    this.#setHud('WHACK THE CUBE');
+    this.#spawnTarget();
   }
 
   #spawnTarget() {
@@ -76,8 +101,6 @@ export class CalibState extends State {
     this.#targetId = this.#world.spawnAtHole(hole, TARGET_HEX, Infinity, 0);
     this.#world.actorMesh(this.#targetId)?.getWorldPosition(this.#targetPos);
   }
-
-  #onSelect = () => { if (this.#phase === 'whack') this.#advance(true); };
 
   #advance(hit: boolean) {
     if (this.#targetId >= 0) {
@@ -101,19 +124,19 @@ export class CalibState extends State {
 
   override update(delta: number, frame?: XRFrame) {
     this.#world.update(delta); // target rise + sparkle bursts
-
     if (frame) this.#record(frame);
 
-    if (this.#phase === 'whack') {
+    if (this.#phase === 'place') {
+      this.#placeT += delta;
+      // no XR at all → move on quickly; a real session → give time to pinch
+      if ((!frame && this.#placeT > 2) || this.#placeT > PLACE_TIMEOUT_S) this.#toWhack();
+    } else if (this.#phase === 'whack') {
       this.#windowT += delta;
       if (this.#windowT >= WHACK_WINDOW_S) this.#advance(false);
     } else if (this.#phase === 'idle') {
       this.#idleLeft -= delta;
       this.#setHud(`DO NOT HIT  ${Math.max(0, Math.ceil(this.#idleLeft))}`);
-      if (this.#idleLeft <= 0) {
-        this.#phase = 'done';
-        this.#setHud('DONE  -  PRESS MENU');
-      }
+      if (this.#idleLeft <= 0) { this.#phase = 'done'; this.#setHud('DONE  -  PINCH TO SAVE'); }
     }
   }
 
@@ -132,7 +155,7 @@ export class CalibState extends State {
         if (!pose) { ok = false; break; }
         const p = pose.transform.position;
         rec[KEY[k]] = [r4(p.x), r4(p.y), r4(p.z)];
-        if (k === 0) rec.r = r4(pose.radius || 0);
+        if (k === 0) { rec.r = r4(pose.radius || 0); this.#lastPalmY = p.y; }
       }
       if (ok) this.#frames.push(rec);
     }
@@ -143,12 +166,13 @@ export class CalibState extends State {
   #onEnd = () => { void this.#send(); };
 
   async #send() {
-    if (this.#sent || !this.#frames.length) return;
+    const frames = this.#frames.filter((f) => f.phase !== 'place'); // drop the placement fiddling
+    if (this.#sent || !frames.length) return;
     this.#sent = true;
     const body = JSON.stringify({
       ua: navigator.userAgent,
       started: new Date(this.#t0 + performance.timeOrigin).toISOString(),
-      frames: this.#frames,
+      frames,
     });
     try { await fetch('/__record?to=calib', { method: 'POST', body }); } catch { /* server gone / offline */ }
   }
