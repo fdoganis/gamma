@@ -9,6 +9,9 @@ export type LevelConfig = {
   upMin: number;
   upMax: number;         // hold window before a body sinks
   unicornChance: number; // decoy roll per spawn tick
+  reps?: number;         // taps per color; default = the level number
+  roundS?: number;       // round length; default ROUND_SECONDS
+  snatchAll?: boolean;   // a unicorn tap zeroes every color, not just the last
 };
 
 export const LEVELS: LevelConfig[] = [
@@ -22,3 +25,16 @@ export const LEVELS: LevelConfig[] = [
 ];
 
 export const LEVEL_COUNT = LEVELS.length;
+
+// The js13k nod: a hidden hard mode off the normal 1..7 progression. Reached by
+// signing "13K" as your initials (drops you straight in) or by clearing level 7
+// once that's been done. 3 of each colour in a short round at the tightest
+// cadence, and the unicorn wipes *everything*.
+export const L13: LevelConfig = {
+  spawnEvery: 0.34, jitter: 0.22, maxActive: 8, upMin: 0.35, upMax: 1.0,
+  unicornChance: 0.32, reps: 3, roundS: 35, snatchAll: true,
+};
+
+export function l13Unlocked(): boolean {
+  try { return localStorage.getItem('gamma.l13') === '1'; } catch { return false; }
+}

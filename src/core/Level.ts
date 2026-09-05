@@ -5,5 +5,6 @@ export class Level {
   #value = 1;
   get value(): number { return this.#value; }
   advance(): void { this.#value += 1; }
+  set(n: number): void { this.#value = n; } // jump to a specific level (e.g. the unlocked L13)
   reset(): void { this.#value = 1; }
 }

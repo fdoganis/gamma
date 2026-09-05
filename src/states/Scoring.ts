@@ -33,6 +33,7 @@ export class Scoring {
 
   #streak = 0;
   #reps = 1;                                 // taps needed per color this level
+  #snatchAll = false;                        // L13: a unicorn tap wipes every color
   #counts = new Uint8Array(RAINBOW.length);  // taps landed per color
   #order: number[] = [];                     // one entry per landed tap — the unicorn pops the last
   #popups: Popup[] = [];
@@ -67,9 +68,16 @@ export class Scoring {
 
   // Tapped the decoy. Break the streak and take one tap back off the
   // most-recent color (its gauge drops); with nothing to take, dock points.
-  // Level-scaled harsher later (L13: lose everything).
+  // On L13 (snatchAll) it wipes every color instead.
   hitUnicorn(pos: Vector3): void {
     this.#streak = 0;
+    if (this.#snatchAll) {
+      this.#counts.fill(0);
+      this.#order.length = 0;
+      for (let i = 0; i < RAINBOW.length; i++) this.#world.setRainbowFill(i, 0);
+      this.#popup(pos, UNICORN_HEX, -1);
+      return;
+    }
     const lost = this.#order.pop();
     if (lost !== undefined && this.#counts[lost] > 0) {
       this.#counts[lost] -= 1;
@@ -104,8 +112,9 @@ export class Scoring {
     }
   }
 
-  reset(reps: number): void {
+  reset(reps: number, snatchAll = false): void {
     this.#reps = reps;
+    this.#snatchAll = snatchAll;
     this.#streak = 0;
     this.#counts.fill(0);
     this.#order.length = 0;

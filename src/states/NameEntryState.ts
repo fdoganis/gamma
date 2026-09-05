@@ -14,12 +14,14 @@ import { State } from '../core/State';
 import { SelectCommand } from '../commands/SelectCommand';
 import { IntroState } from './IntroState';
 import { RAINBOW } from '../core/palette';
+import type { ClassOf } from '../types/ClassOf';
 import type { ITransition } from '../core/StateMachine';
 import type { World } from '../world/World';
 import type { RenderingManager } from '../rendering/RenderingManager';
 import type { TextManager } from '../text/TextManager';
 import type { TextHandle } from '../text/ITextEngine';
 import type { Score } from '../core/Score';
+import type { Level } from '../core/Level';
 import type { HiScore } from '../core/HiScore';
 
 // The whole 'light' glyph set — same as the HUD, nothing extra to ship.
@@ -44,23 +46,28 @@ export class NameEntryState extends State {
   #text: TextManager;
   #render: RenderingManager;
   #score: Score;
+  #level: Level;
   #hi: HiScore;
+  #run: ClassOf<State>; // RunState, injected to avoid an import cycle
 
   #slots: Slot[] = [];
   #okId = -1;
   #okLabel: TextHandle | undefined;
   #prompt!: TextHandle;
   #t = 0;
-  #exitIn = -1; // >= 0 once OK is confirmed: seconds until we leave for Intro
+  #exitIn = -1;               // >= 0 once OK is confirmed: seconds until we leave
+  #next: ClassOf<State> = IntroState; // where the beat leads — Run (level 13) on "13K"
 
-  constructor(sm: ITransition, world: World, text: TextManager, render: RenderingManager, score: Score, hi: HiScore) {
+  constructor(sm: ITransition, world: World, text: TextManager, render: RenderingManager, score: Score, level: Level, hi: HiScore, run: ClassOf<State>) {
     super();
     this.#sm = sm;
     this.#world = world;
     this.#text = text;
     this.#render = render;
     this.#score = score;
+    this.#level = level;
     this.#hi = hi;
+    this.#run = run;
     this.on(SelectCommand, this.#onSelect);
   }
 
@@ -69,6 +76,7 @@ export class NameEntryState extends State {
   override enter() {
     this.#t = 0;
     this.#exitIn = -1;
+    this.#next = IntroState;
     this.#slots = [];
     this.#okId = -1;
     this.#prompt = this.#text.show('NEW HI', this.#render.hudAnchor, { color: '#ffcc33' });
@@ -100,7 +108,7 @@ export class NameEntryState extends State {
 
     if (this.#exitIn >= 0) {
       this.#exitIn -= delta;
-      if (this.#exitIn <= 0) this.#sm.change(IntroState);
+      if (this.#exitIn <= 0) this.#sm.change(this.#next);
       return;
     }
 
@@ -172,6 +180,8 @@ export class NameEntryState extends State {
     if (name === L13_NAME) {
       try { localStorage.setItem('gamma.l13', '1'); } catch { /* not persisted */ }
       this.#text.setText(this.#prompt, '13 UNLOCKED');
+      this.#level.set(13);
+      this.#next = this.#run; // straight into the L13 run after the beat
     } else {
       this.#text.setText(this.#prompt, 'SAVED');
     }

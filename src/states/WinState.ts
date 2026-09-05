@@ -10,13 +10,13 @@ import { NameEntryState } from './NameEntryState';
 import type { Score } from '../core/Score';
 import type { Level } from '../core/Level';
 import type { HiScore } from '../core/HiScore';
-import { LEVEL_COUNT } from '../core/levels';
+import { LEVEL_COUNT, l13Unlocked } from '../core/levels';
 import type { AudioManager } from '../audio/AudioManager';
 
 // Between-levels screen. Reached when every rainbow color is complete before the
-// timer runs out (RunState has already advanced the Level). Tap → next level, or
-// → Intro once level 7 is cleared. (The full "rainbow over the freed unicorn"
-// finale is still §5.3 / §6.)
+// timer runs out (RunState has already advanced the Level). Tap → next level;
+// after level 7 → the hidden L13 if unlocked, else name entry / Intro; after
+// L13 → "RAINBOW RESTORED" → Intro. (The full wordless finale is still §5.3/§6.)
 export class WinState extends State {
   #sm: ITransition;
   #text: TextManager;
@@ -45,17 +45,23 @@ export class WinState extends State {
   }
 
   #onSelect = () => {
-    this.#sm.change(
-      this.#level.value <= LEVEL_COUNT ? this.#resume
-        : this.#hi.beaten(this.#score.value) ? NameEntryState : IntroState,
-    );
+    const v = this.#level.value;
+    if (v <= LEVEL_COUNT) { this.#sm.change(this.#resume); return; }   // 1..7 → next level
+    if (v === 13) { this.#sm.change(IntroState); return; }             // L13 cleared
+    if (l13Unlocked()) { this.#level.set(13); this.#sm.change(this.#resume); return; } // cleared L7, L13 available
+    this.#sm.change(this.#hi.beaten(this.#score.value) ? NameEntryState : IntroState);
   };
 
   override enter() {
     this.#audio.activate(); // RunState.exit() deactivated it; the sting needs it back
     this.#audio.playSFX('win');
-    const more = this.#level.value <= LEVEL_COUNT;
-    this.#text.setText(this.#message, more ? `LEVEL ${this.#level.value}` : `YOU WIN  ${this.#score.value}`);
+    const v = this.#level.value;
+    const msg =
+      v <= LEVEL_COUNT ? `LEVEL ${v}` :
+      v === 13 ? `RAINBOW RESTORED  ${this.#score.value}` :
+      l13Unlocked() ? 'LEVEL 13' :
+      `YOU WIN  ${this.#score.value}`;
+    this.#text.setText(this.#message, msg);
     this.#text.setVisible(this.#message, true);
   }
   override exit() {

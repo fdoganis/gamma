@@ -9,7 +9,7 @@ import type { ITransform } from '../types/ITransform';
 import type { RenderingManager } from '../rendering/RenderingManager';
 import type { Score } from '../core/Score';
 import type { Level } from '../core/Level';
-import { LEVELS, LEVEL_COUNT } from '../core/levels';
+import { LEVELS, LEVEL_COUNT, L13 } from '../core/levels';
 import type { LevelConfig } from '../core/levels';
 import { RAINBOW } from '../core/palette';
 import { GameOverState } from './GameOverState';
@@ -83,7 +83,7 @@ export class RunState extends State {
 
     if (this.#scoring.collect(removed)) {
       this.#scoring.awardTimeBonus(this.#timeLeft);
-      this.#level.advance();
+      if (this.#level.value <= LEVEL_COUNT) this.#level.advance(); // L13 is terminal — don't step past it
       this.#transition.change(WinState);
     }
   };
@@ -146,13 +146,13 @@ export class RunState extends State {
   }
 
   override enter() {
-    this.#cfg = LEVELS[Math.min(this.#level.value, LEVEL_COUNT) - 1];
-    this.#timeLeft = ROUND_SECONDS;
+    this.#cfg = this.#level.value === 13 ? L13 : LEVELS[Math.min(this.#level.value, LEVEL_COUNT) - 1];
+    this.#timeLeft = this.#cfg.roundS ?? ROUND_SECONDS;
     this.#lastShownSecond = -1;
     this.#spawnCooldown = this.#cfg.spawnEvery;
     this.#world.reset();
-    this.#scoring.reset(this.#level.value); // level N → N taps per color
-    this.#timerLabel = this.#text.show(String(ROUND_SECONDS), this.#render.timerAnchor, { color: '#ffffff' });
+    this.#scoring.reset(this.#cfg.reps ?? this.#level.value, this.#cfg.snatchAll ?? false); // level N → N taps per color; L13 → 3 + wipe-all unicorn
+    this.#timerLabel = this.#text.show(String(Math.ceil(this.#timeLeft)), this.#render.timerAnchor, { color: '#ffffff' });
     this.#audio.activate();
     this.#audio.playBGM('music'); // looping bed for the round only
   }
