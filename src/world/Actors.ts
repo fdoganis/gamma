@@ -2,11 +2,13 @@
 // despawn. Generic: an actor does not know its color means "a stolen rainbow
 // color", or why it was told to appear — RunState owns all of that.
 // Backed by the generic EntityManager entity store.
-import { Mesh, MeshPhongMaterial, CylinderGeometry, MathUtils, Raycaster } from 'three';
-import type { Object3D, Ray, Vector3, Color } from 'three';
+import { Mesh, MeshPhongMaterial, CylinderGeometry, MathUtils, Raycaster, Vector3 } from 'three';
+import type { Object3D, Ray, Color } from 'three';
 import { EntityManager } from './EntityManager';
 import { easeOutCubic } from '../animation/Easing';
 import type { Hole } from './Hole';
+
+const _actorWorld = new Vector3(); // scratch: actor world position for the proximity test
 
 // what a collected actor leaves behind: its caller-supplied `tag` (opaque here —
 // RunState uses it for the rainbow index) plus color + position for effects.
@@ -98,7 +100,10 @@ export class Actors {
     let nearD = proximityR;
     this.#em.forEach((a) => {
       meshes.push(a.mesh);
-      const d = a.mesh.position.distanceTo(ray.origin);
+      // ray.origin is world-space; a.mesh.position is local to the placed anchor,
+      // so compare against the actor's world position (matters once the board is
+      // anchored anywhere but the origin — i.e. on a real device).
+      const d = a.mesh.getWorldPosition(_actorWorld).distanceTo(ray.origin);
       if (d < nearD) { nearD = d; nearId = a.id; }
     });
     this.#raycaster.set(ray.origin, ray.direction);

@@ -6,20 +6,19 @@ import { SpatialInputSource } from './SpatialInputSource';
 import { SelectCommand } from '../commands/SelectCommand';
 
 // Wraps renderer.xr.getHand(n). Keeps the event bindings of a SpatialInputSource
-// (the app still binds `pinchend`), and adds a poll-based "whack" detector: on a
-// real tangible table the palm cannot pass through, so a table tap is the palm
-// being driven down fast then abruptly stopped by the surface. We watch the palm
-// centre joint for exactly that — a fast descent inside a short window, then a
-// near-stop, at a height consistent with the placed board.
+// (the app still binds `pinchend`), and adds a poll-based "whack" detector: a
+// table tap is the palm being driven down fast while it's close to the placed
+// surface. We watch the palm centre joint for a downward strike inside that
+// band. We deliberately do NOT wait for a near-stop — real hand tracking jitters
+// a few mm per frame (~0.2-0.3 m/s), so "stopped" never registers on device;
+// firing on the downstroke also feels more responsive.
 
 const PALM = 'middle-finger-metacarpal'; // palm centre; present in every hand pose, less jittery than a fingertip
-const SPEED_MIN_mps = 0.5;   // downward speed that counts as a swing
-const STOP_SPEED_mps = 0.06; // speed at/under which the palm is "stopped"
-const WINDOW_ms = 120;       // a stop only counts if a swing happened this recently
-const BAND_LOW_m = -0.03;    // palm y vs. board surface: from 3cm below (tracking slop)…
-const BAND_HIGH_m = 0.06;    // …to 6cm above — rejects mid-air stops
+const SPEED_MIN_mps = 0.6;   // downward speed that counts as a strike
+const BAND_LOW_m = -0.04;    // palm y vs. board surface: from 4cm below (tracking slop / surface estimate)…
+const BAND_HIGH_m = 0.14;    // …to 14cm above — the metacarpal rides well over a flat slap; still rejects mid-air
 const COOLDOWN_ms = 280;     // one whack per hand per this long
-const WHACK_REACH_m = 0.14;  // an open palm catches a wider area than a controller point
+const WHACK_REACH_m = 0.18;  // an open palm catches a wider area than a controller point
 
 const _palm = new Vector3();
 const _surface = new Vector3();
@@ -32,7 +31,6 @@ export class HandSource extends SpatialInputSource {
   #prev = new Vector3();
   #prevT = 0;
   #tracking = false;
-  #swungUntil = 0; // performance.now() by which a swing must be followed by a stop
   #coolUntil = 0;
 
   constructor(hand: XRHandSpace, handedness: XRHandedness, board: Object3D) {
@@ -55,19 +53,14 @@ export class HandSource extends SpatialInputSource {
       const dt = (now - this.#prevT) / 1000;
       if (dt > 0 && dt < 0.1) {
         const downSpeed = (this.#prev.y - _palm.y) / dt;
-        const speed = _palm.distanceTo(this.#prev) / dt;
-        if (downSpeed >= SPEED_MIN_mps) this.#swungUntil = now + WINDOW_ms;
-
         const relY = _palm.y - this.#board.getWorldPosition(_surface).y;
         if (
           now >= this.#coolUntil &&
-          now <= this.#swungUntil &&
-          speed <= STOP_SPEED_mps &&
+          downSpeed >= SPEED_MIN_mps &&
           relY >= BAND_LOW_m && relY <= BAND_HIGH_m
         ) {
           this.queue.push(new SelectCommand(joint, this.#handedness, false, WHACK_REACH_m));
           this.#coolUntil = now + COOLDOWN_ms;
-          this.#swungUntil = 0;
         }
       }
     }
