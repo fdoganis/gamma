@@ -3,7 +3,7 @@
 // pool — all parented to the placed anchor. Adds only the non-positional cues;
 // no game rules (cadence, colors, scoring) live here.
 import { Color } from 'three';
-import type { Object3D, Vector3, Ray } from 'three';
+import type { Object3D, Vector3, Ray, PerspectiveCamera } from 'three';
 
 import { Gameboard } from './Gameboard';
 import { Actors } from './Actors';
@@ -23,10 +23,10 @@ export class World {
   #sparkles: Sparkles;
   #audio: AudioManager;
 
-  constructor(root: Object3D, audio: AudioManager) {
+  constructor(root: Object3D, audio: AudioManager, camera: PerspectiveCamera) {
     this.#audio = audio;
     this.#board = new Gameboard(root);
-    this.#actors = new Actors(root);
+    this.#actors = new Actors(root, camera);
     this.#rainbow = new Rainbow(root);
     this.#sparkles = new Sparkles(root);
   }

@@ -2,12 +2,17 @@
 // despawn. Generic: an actor does not know its color means "a stolen rainbow
 // color", or why it was told to appear — RunState owns all of that.
 import { Mesh, MeshPhongMaterial, CapsuleGeometry, MathUtils, Raycaster, Vector3 } from 'three';
-import type { Object3D, Ray, Color, BufferGeometry } from 'three';
+import type { Object3D, PerspectiveCamera, Ray, Color, BufferGeometry } from 'three';
 import { easeOutCubic } from '../animation/Easing';
 import { dressUnicorn, disposeUnicornAssets } from './unicorn';
+import { dressGhost, disposeGhostAssets } from './ghostEyes';
 import type { Hole } from './Hole';
 
 const _actorWorld = new Vector3(); // scratch: actor world position for the proximity test
+const _camWorld = new Vector3();
+
+// the trim closures (unicorn mane / ghost eyes) both expose this
+type Trim = { update(delta: number, ySpeed: number, camPos: Vector3): void };
 
 // what a collected actor leaves behind: its caller-supplied `tag` (opaque here —
 // RunState uses it for the rainbow index) plus color + position for effects.
@@ -37,18 +42,21 @@ type Actor = {
   phase: Phase;
   phaseT: number; // seconds spent in the current phase
   hold: number;   // seconds to stay up once risen
+  trim: Trim;     // ghost eyes, or the unicorn's mane — animated each frame
 };
 
 export class Actors {
   #root: Object3D;
+  #camera: PerspectiveCamera; // ghost eyes / pupils track the player
   #actors = new Map<number, Actor>(); // live bodies by id — inlined, single consumer
   #nextId = 0;
   #raycaster = new Raycaster();
 
   #geo = new CapsuleGeometry(BODY_R_m, BODY_LEN_m, 4, 12); // every body — a rounded "ghost"
 
-  constructor(root: Object3D) {
+  constructor(root: Object3D, camera: PerspectiveCamera) {
     this.#root = root;
+    this.#camera = camera;
   }
 
   get count(): number { return this.#actors.size; }
@@ -73,12 +81,12 @@ export class Actors {
     const mesh = new Mesh(this.#geo, new MeshPhongMaterial({ color: colorHex }));
     mesh.castShadow = true;
     mesh.position.set(hole.x, HIDDEN_Y_m, hole.z);
-    if (decoy) dressUnicorn(mesh, BODY_HALF_m); // trim rides along with every rise / sink / cull
+    const trim = decoy ? dressUnicorn(mesh, BODY_HALF_m) : dressGhost(mesh, BODY_HALF_m); // rides along with every rise / sink / cull
     this.#root.add(mesh);
     mesh.updateWorldMatrix(true, false); // same-frame world pose for callers
 
     const id = this.#nextId++;
-    this.#actors.set(id, { id, mesh, hole, tag, decoy, phase: 'rising', phaseT: 0, hold });
+    this.#actors.set(id, { id, mesh, hole, tag, decoy, phase: 'rising', phaseT: 0, hold, trim });
     return { id, mesh };
   }
 
@@ -137,10 +145,13 @@ export class Actors {
   // uses it to break the streak.
   update(delta: number): number {
     let missed = 0;
+    this.#camera.getWorldPosition(_camWorld);
     // Deleting the current entry mid-iteration is safe for a Map (it has already
     // been yielded), so removal happens inline — no deferred `done` list.
     this.#actors.forEach((a) => {
       a.phaseT += delta;
+      const prevY = a.mesh.position.y;
+      let removed = false;
 
       if (a.phase === 'rising') {
         const k = Math.min(a.phaseT / RISE_S, 1);
@@ -154,8 +165,10 @@ export class Actors {
         // Switch the sink to `linear` (or an ease-in) during final UI tuning.
         const k = Math.min(a.phaseT / SINK_S, 1);
         a.mesh.position.y = MathUtils.lerp(PEEK_Y_m, HIDDEN_Y_m, easeOutCubic(k));
-        if (k >= 1) { const wasDecoy = a.decoy; this.#remove(a); if (!wasDecoy) missed++; } // ignoring a decoy is correct play — not a miss
+        if (k >= 1) { const wasDecoy = a.decoy; this.#remove(a); removed = true; if (!wasDecoy) missed++; } // ignoring a decoy is correct play — not a miss
       }
+
+      if (!removed) a.trim.update(delta, (a.mesh.position.y - prevY) / delta, _camWorld);
     });
     return missed;
   }
@@ -173,6 +186,7 @@ export class Actors {
     this.clear();
     this.#geo.dispose();
     disposeUnicornAssets();
+    disposeGhostAssets();
   }
 
   #remove(a: Actor): void {

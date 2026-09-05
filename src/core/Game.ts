@@ -44,7 +44,7 @@ export class Game {
   constructor() {
     this.#render = new RenderingManager();
     this.#audio = new AudioManager(this.#render.camera, new SoundBoxSoundEngine()); // or: OscillatorSoundEngine / ZzfxSoundEngine
-    this.#world = new World(this.#render.anchor, this.#audio);
+    this.#world = new World(this.#render.anchor, this.#audio, this.#render.camera);
     this.#haptics = new Haptics(this.#render.renderer);
     this.#input = new InputManager(this.#render.renderer, this.#render.scene, this.#render.camera, this.#render.anchor);
     // TEXT_ENGINE is a literal const — rolldown folds the compare and the
