@@ -25,7 +25,11 @@ export const GLYPH_SOURCE: 'full' | 'light' | 'canvas' = 'light';
 export const VOXEL_SHADING: 'phong' | 'matcap' | 'env' = 'phong';
 
 // Voxel primitive:
-//   'box'  — BoxGeometry, the classic square "pixel"
-//   'octa' — OctahedronGeometry: varied normals, so matcap/env show real
-//            per-voxel form (a shaded gem)
-export const VOXEL_SHAPE: 'box' | 'octa' = 'box';
+//   'box'        — BoxGeometry, the classic square "pixel" (default aesthetic)
+//   'octa'       — OctahedronGeometry: varied normals, so matcap/env show real
+//                  per-voxel form (a shaded gem)
+//   'sphere'     — SphereGeometry: every voxel self-shades from any angle, like
+//                  a dot-matrix / LED display — most legible, least blocky
+//   'roundedbox' — RoundedBoxGeometry: blocky silhouette + gappy scanline look,
+//                  but the rounded edges catch a raking key for per-voxel contour
+export const VOXEL_SHAPE: 'box' | 'octa' | 'sphere' | 'roundedbox' = 'box';

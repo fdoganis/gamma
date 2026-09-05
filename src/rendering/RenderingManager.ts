@@ -69,34 +69,37 @@ export class RenderingManager {
 
     this.renderer.shadowMap.enabled = true;
 
-    const hemi = new HemisphereLight(0xffffff, 0xffffff, 2);
-    hemi.color.setHSL(0.6, 1, 0.6);
-    hemi.groundColor.setHSL(0.095, 1, 0.75);
+    // Low, near-neutral ambient — enough that shadowed voxel faces don't crush to
+    // black, low enough that the raking key still carves visible form.
+    const hemi = new HemisphereLight(0xffffff, 0xffffff, 0.45);
     hemi.position.set(0, 3, 0);
     this.scene.add(hemi);
 
-    // Parented to anchor, not scene: 
-    // light source and shadow target follow the placement
-    const sun = new DirectionalLight(0xffffff, 4); // also gives Phong voxels a shading gradient
-    sun.position.set(0, 2, 0);
+    // Parented to anchor, not scene, so the light and its shadow follow the
+    // placed board. Raked in from front-right-above (not straight down): each
+    // voxel cube then shows a bright top, a mid front and a dark side — that
+    // value step across faces is what makes the text legible in passthrough.
+    const sun = new DirectionalLight(0xffffff, 4);
+    sun.position.set(1.3, 2.2, 1.0);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024); // small play area (±1m frustum) — this re-renders every frame, keep it cheap
-    sun.shadow.camera.top = 1; sun.shadow.camera.bottom = -1;
-    sun.shadow.camera.right = 1; sun.shadow.camera.left = -1;
-    sun.shadow.camera.near = 0.1; sun.shadow.camera.far = 3;
+    sun.shadow.mapSize.set(1024, 1024); // small play area — re-renders every frame, keep it cheap
+    sun.shadow.camera.top = 1.4; sun.shadow.camera.bottom = -1.4;
+    sun.shadow.camera.right = 1.4; sun.shadow.camera.left = -1.4;
+    sun.shadow.camera.near = 0.1; sun.shadow.camera.far = 6; // angled light sits further from the play area
     this.anchor.add(sun, sun.target);
 
+    // Dim neutral front fill — lifts the key's shadow side a little without
+    // flattening it, and stays white so it doesn't tint the voxel colors.
+    const foreLight = new DirectionalLight(0xffffff, 0.8);
+    foreLight.position.set(2, 2, 4);
+    this.anchor.add(foreLight, foreLight.target);
 
-    // Parented to anchor (like sun) so the fill lighting follows the placed board.
-    const foreLight = new DirectionalLight(0xffffff, 2)
-    foreLight.color.setHSL(0.6, 1, 0.6);
-    foreLight.position.set(2, 2, 4)
-    this.anchor.add(foreLight, foreLight.target)
-
-    const backLight = new DirectionalLight(0xffffff, 4)
-    backLight.color.setHSL(0.095, 1, 0.75);
-    backLight.position.set(-1, -1, -2)
-    this.anchor.add(backLight, backLight.target)
+    // The only rim: a faint cool light from behind/below to peel the text
+    // silhouette off a dark passthrough background.
+    const backLight = new DirectionalLight(0xffffff, 0.6);
+    backLight.color.setHSL(0.58, 0.35, 0.6);
+    backLight.position.set(-1, -1, -2);
+    this.anchor.add(backLight, backLight.target);
 
     // Invisible: only its shadow renders, so virtual objects appear to cast a shadow
     // onto the real (passthrough) floor. Sized to comfortably cover the spawn disc.

@@ -1,4 +1,5 @@
-import { BoxGeometry, OctahedronGeometry, Matrix4, Vector3, Quaternion, Color, MeshPhongMaterial, MeshMatcapMaterial, MeshStandardMaterial } from 'three';
+import { BoxGeometry, OctahedronGeometry, SphereGeometry, Matrix4, Vector3, Quaternion, Color, MeshPhongMaterial, MeshMatcapMaterial, MeshStandardMaterial } from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import type { Scene, PerspectiveCamera, Material, BufferGeometry } from 'three';
 import type { ITransform } from '../../../types/ITransform';
 import type { ITextEngine, TextStyle } from '../../ITextEngine';
@@ -53,9 +54,11 @@ export class VoxelTextEngine implements ITextEngine {
       VOXEL_SHADING === 'env' ? new MeshStandardMaterial({ envMap: makeEnvMap(), metalness: 1, roughness: 0.18 }) :
       VOXEL_SHADING === 'matcap' ? new MeshMatcapMaterial({ matcap: makeMatcap() }) :
       new MeshPhongMaterial({ shininess: 200 });
-    const geometry: BufferGeometry = VOXEL_SHAPE === 'octa'
-      ? new OctahedronGeometry(0.7, 0)
-      : new BoxGeometry(1, 1, 1);
+    const geometry: BufferGeometry =
+      VOXEL_SHAPE === 'octa' ? new OctahedronGeometry(0.7, 0) :
+      VOXEL_SHAPE === 'sphere' ? new SphereGeometry(0.5, 8, 6) :
+      VOXEL_SHAPE === 'roundedbox' ? new RoundedBoxGeometry(1, 1, 1, 2, 0.2) :
+      new BoxGeometry(1, 1, 1);
     this.#pool = new InstancedPool(scene, geometry, maxInstances, material);
     // GLYPH_SOURCE is a literal const — the branches not picked fold away and
     // their font data / canvas code tree-shake out of the build.
