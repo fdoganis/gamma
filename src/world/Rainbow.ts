@@ -8,14 +8,14 @@ import type { Object3D } from 'three';
 import { RAINBOW } from '../core/palette';
 
 const ARCS = RAINBOW.length;
-const INNER_R_m = 0.34;   // outer arc foot lands ~6cm clear of the ±0.41 hole field
+const INNER_R_m = 0.40;   // outer arc foot lands ~12cm clear of the ±0.41 hole field
 const GAP_m = 0.022;      // radial spacing between rings
 const TRACK_TUBE_m = 0.012;
 const FILL_TUBE_m = 0.015; // fatter, so the fill covers the track where present
 const RADIAL_SEG = 8;
 const TUBULAR_SEG = 44;
-const Y_OFF_m = 0.05;     // float the whole arc above the table
-const Z_OFF_m = -0.2;     // behind the back hole row, arcing over the field
+const Y_OFF_m = 0.13;     // float the whole arc well above the table, clear of the holes
+const Z_OFF_m = -0.35;    // set well behind the back hole row so it reads as "over and behind"
 const TRACK_S = 0.2;      // an unlit track: same hue, near-flat saturation/lightness
 const TRACK_L = 0.52;
 const EMPTY = 1e-4;       // ~zero sweep for an unfilled arc
