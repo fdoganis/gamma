@@ -1,8 +1,8 @@
 // Bodies that emerge straight up out of a Hole, hold, then sink back down and
 // despawn. Generic: an actor does not know its color means "a stolen rainbow
 // color", or why it was told to appear — RunState owns all of that.
-import { Mesh, MeshPhongMaterial, CylinderGeometry, MathUtils, Raycaster, Vector3 } from 'three';
-import type { Object3D, Ray, Color } from 'three';
+import { Mesh, MeshPhongMaterial, MeshBasicMaterial, CylinderGeometry, CapsuleGeometry, SphereGeometry, TorusGeometry, MathUtils, Raycaster, Vector3 } from 'three';
+import type { Object3D, Ray, Color, BufferGeometry } from 'three';
 import { easeOutCubic } from '../animation/Easing';
 import type { Hole } from './Hole';
 
@@ -18,7 +18,8 @@ export type RemovedActor = { tag: number; color: Color; position: Vector3 };
 export type ActorHit = { id: number; tag: number; decoy: boolean; position: Vector3 };
 
 const ACTOR_H_m = 0.12;
-const HORN_HEX = 0xd8899b; // pink; a decoy's giveaway — a horn cone on top of the body (the unicorn)
+const HORN_HEX = 0xd8899b;   // pink — the horn + cheeks of the decoy (the unicorn)
+const MANE = ['#F00', '#FF0', '#0F0', '#08F', '#80F']; // arc colors down the unicorn's back
 const HIDDEN_Y_m = -0.14; // center: whole body below the rim and inside the pit (fits a taller unicorn too)
 const PEEK_Y_m = 0.06;    // center: clearly above the occluder plane, so a risen body is never culled
 const RISE_S = 0.25;
@@ -28,7 +29,7 @@ type Phase = 'rising' | 'holding' | 'sinking';
 
 type Actor = {
   id: number;
-  mesh: Mesh<CylinderGeometry, MeshPhongMaterial>;
+  mesh: Mesh<BufferGeometry, MeshPhongMaterial>;
   hole: Hole;
   tag: number;    // opaque caller id (RunState: rainbow color index)
   decoy: boolean; // horned; a tap never removes it and its unhit sink is not a miss
@@ -41,16 +42,46 @@ export class Actors {
   #root: Object3D;
   #actors = new Map<number, Actor>(); // live bodies by id — inlined, single consumer
   #nextId = 0;
-  #geo: CylinderGeometry;
-  #hornGeo: CylinderGeometry;                 // top radius 0 → a cone (codebase idiom)
-  #hornMat: MeshPhongMaterial;                // shared: every unicorn horn is the same pink
+  #geo: CylinderGeometry;             // normal actor body
   #raycaster = new Raycaster();
+
+  // shared decoy (unicorn) parts — one set, every unicorn reuses them
+  #decoyGeo = new CapsuleGeometry(0.045, 0.04, 4, 12); // rounder, cuter body
+  #hornGeo = new CylinderGeometry(0, 0.018, 0.05, 10); // small cone
+  #eyeGeo = new SphereGeometry(0.012, 8, 6);
+  #cheekGeo = new SphereGeometry(0.017, 8, 6);
+  #maneGeo = new TorusGeometry(0.028, 0.007, 6, 14, Math.PI * 0.8);
+  #pinkMat = new MeshPhongMaterial({ color: HORN_HEX });          // horn + cheeks
+  #eyeMat = new MeshPhongMaterial({ color: 0x111111 });
+  #maneMat = MANE.map((c) => new MeshBasicMaterial({ color: c }));
 
   constructor(root: Object3D) {
     this.#root = root;
     this.#geo = new CylinderGeometry(0.05, 0.05, ACTOR_H_m, 16);
-    this.#hornGeo = new CylinderGeometry(0, 0.03, 0.08, 12);
-    this.#hornMat = new MeshPhongMaterial({ color: HORN_HEX });
+  }
+
+  // A cream capsule with black eyes, pink cheeks half-sunk in the body, a small
+  // horn tipped toward the viewer, and a fan of rainbow arcs for a mane.
+  #dressUnicorn(body: Object3D): void {
+    for (const sx of [-1, 1]) {
+      const eye = new Mesh(this.#eyeGeo, this.#eyeMat);
+      eye.position.set(sx * 0.016, 0.02, 0.038);
+      body.add(eye);
+      const cheek = new Mesh(this.#cheekGeo, this.#pinkMat);
+      cheek.position.set(sx * 0.038, -0.005, 0.026); // mostly inside the capsule
+      body.add(cheek);
+    }
+    const horn = new Mesh(this.#hornGeo, this.#pinkMat);
+    horn.position.set(0, ACTOR_H_m / 2 + 0.01, 0.006);
+    horn.rotation.x = 0.22; // ~13° toward the viewer (+Z)
+    body.add(horn);
+    this.#maneMat.forEach((mat, k) => {
+      const arc = new Mesh(this.#maneGeo, mat);
+      arc.position.set(0, 0.005 + k * 0.006, -0.03);
+      arc.rotation.set(Math.PI / 2, 0, (k - 2) * 0.28); // lay it back, fan it out
+      arc.scale.setScalar(1 - k * 0.06);
+      body.add(arc);
+    });
   }
 
   get count(): number { return this.#actors.size; }
@@ -64,23 +95,18 @@ export class Actors {
   }
 
   // Raise a body of `colorHex` from `hole`, up for `hold` seconds, carrying
-  // `tag`; it sinks and despawns on its own. `decoy` adds a pink horn cone (the
-  // unicorn) and marks it as a body that survives a tap. Returns the mesh (for
-  // audio / hit-test) or null if the hole is already taken.
-  // `hold` may be Infinity — the body then stays up until it is despawned
-  // explicitly (NameEntryState's letter cylinders).
-  spawn(hole: Hole, colorHex: string, hold: number, tag: number, decoy = false): { id: number; mesh: Mesh<CylinderGeometry, MeshPhongMaterial> } | null {
+  // `tag`; it sinks and despawns on its own. `decoy` swaps the body for the
+  // dressed-up unicorn capsule and marks it as one that survives a tap. Returns
+  // the mesh (for audio / hit-test) or null if the hole is already taken.
+  // `hold` may be Infinity — the body then stays up until despawned explicitly.
+  spawn(hole: Hole, colorHex: string, hold: number, tag: number, decoy = false): { id: number; mesh: Mesh<BufferGeometry, MeshPhongMaterial> } | null {
     if (!hole.free) return null;
     hole.free = false;
 
-    const mesh = new Mesh(this.#geo, new MeshPhongMaterial({ color: colorHex }));
+    const mesh = new Mesh(decoy ? this.#decoyGeo : this.#geo, new MeshPhongMaterial({ color: colorHex }));
     mesh.castShadow = true;
     mesh.position.set(hole.x, HIDDEN_Y_m, hole.z);
-    if (decoy) {
-      const horn = new Mesh(this.#hornGeo, this.#hornMat);
-      horn.position.y = ACTOR_H_m / 2 + 0.04; // seated on the body's top cap
-      mesh.add(horn); // rides along with every rise / sink / cull
-    }
+    if (decoy) this.#dressUnicorn(mesh); // eyes / cheeks / horn / mane ride along with every rise / sink / cull
     this.#root.add(mesh);
     mesh.updateWorldMatrix(true, false); // same-frame world pose for callers
 
@@ -118,7 +144,7 @@ export class Actors {
 
   // The live mesh for an id (so World can emit a positional sound from it before
   // despawn). undefined if the actor is already gone.
-  meshOf(id: number): Mesh<CylinderGeometry, MeshPhongMaterial> | undefined {
+  meshOf(id: number): Mesh<BufferGeometry, MeshPhongMaterial> | undefined {
     return this.#actors.get(id)?.mesh;
   }
 
@@ -178,9 +204,8 @@ export class Actors {
 
   dispose(): void {
     this.clear();
-    this.#geo.dispose();
-    this.#hornGeo.dispose();
-    this.#hornMat.dispose();
+    for (const g of [this.#geo, this.#decoyGeo, this.#hornGeo, this.#eyeGeo, this.#cheekGeo, this.#maneGeo]) g.dispose();
+    for (const m of [this.#pinkMat, this.#eyeMat, ...this.#maneMat]) m.dispose();
   }
 
   #remove(a: Actor): void {
