@@ -1,51 +1,62 @@
-// Beat the hi-score → enter 3 initials, pinball style: three cylinders sit in
-// the middle of the board with a letter on top that auto-cycles A→Z (each
-// staggered so all three letters differ); tap one to lock its shown letter (tap
-// again to unlock and resume). A green cylinder behind the row confirms once all
-// three are locked → HiScore.submit → Intro.
-import { Mesh, MeshPhongMaterial, CylinderGeometry, Raycaster, Vector3 } from 'three';
+// Beat the hi-score -> sign your initials by whacking them, whack-a-mole style.
+// Three letter cylinders rise one at a time from the middle row of holes, each
+// with a voxel char on top that auto-cycles the full printable set. Whack a
+// cycling one to freeze its char (it recolours to its "locked" rainbow shade
+// and the next slot rises); whack a locked one to unfreeze it (recolours back,
+// resumes cycling). A violet OK cylinder rises once all three are locked and
+// sinks again if you unlock one. Whack OK -> every cylinder bursts (standard
+// hit explosion), HiScore.submit, -> Intro. Entering "13K" unlocks level 13.
+//
+// Reuses the gameplay loop: World's Actors for the rising bodies, the same
+// ray/proximity hit query, the same Sparkles burst.
+import { Ray, Vector3 } from 'three';
 import { State } from '../core/State';
 import { SelectCommand } from '../commands/SelectCommand';
 import { IntroState } from './IntroState';
+import { RAINBOW } from '../core/palette';
 import type { ITransition } from '../core/StateMachine';
+import type { World } from '../world/World';
 import type { RenderingManager } from '../rendering/RenderingManager';
 import type { TextManager } from '../text/TextManager';
 import type { TextHandle } from '../text/ITextEngine';
 import type { Score } from '../core/Score';
 import type { HiScore } from '../core/HiScore';
 
-const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-const STEP_S = 0.32;            // seconds per cycled letter
-const SPIN_RPS = 2;            // idle spin on an unlocked cylinder (juice; the label billboards)
-const CYL_R = 0.045;
-const CYL_H = 0.11;
-const Y_m = CYL_H / 2;         // sit on the table
-const SLOT_X = [-0.13, 0, 0.13]; // in the gap between the two hole crosses
-const CONFIRM_Z = -0.17;      // behind the back hole row
-const CONFIRM_HEX = '#22cc55';
+// A-Z, 0-9, then the rest of printable ASCII in code order (no lowercase).
+const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 !"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~';
+const STEP_S = 0.12;                       // seconds per cycled character
+const HOLES = [0, 1, 4, 5];               // middle row, left -> right: slots A/B/C, then OK
+const PAIR = [[0, 1], [2, 3], [4, 5]];    // per slot: [cycling, locked] RAINBOW indices — red<->orange, yellow<->green, blue<->indigo
+const OK_TAG = 3;
+const OK_HEX = RAINBOW[6];                // violet
+const L13_NAME = '13K';                   // sign this to unlock level 13
+const EXIT_BEAT_S = 1.6;                  // hold on the explosion + message before Intro
 
 const _o = new Vector3();
 const _d = new Vector3();
+const _ray = new Ray();
 
-type Slot = { mesh: Mesh<CylinderGeometry, MeshPhongMaterial>; label: TextHandle; letter: string; phase: number; locked: boolean };
+type Slot = { id: number; label: TextHandle; char: string; locked: boolean };
 
 export class NameEntryState extends State {
   #sm: ITransition;
+  #world: World;
   #text: TextManager;
   #render: RenderingManager;
   #score: Score;
   #hi: HiScore;
 
-  #geo = new CylinderGeometry(CYL_R, CYL_R, CYL_H, 16);
-  #ray = new Raycaster();
   #slots: Slot[] = [];
-  #confirm!: Mesh<CylinderGeometry, MeshPhongMaterial>;
-  #labels: TextHandle[] = []; // confirm caption + "NEW HI" prompt
+  #okId = -1;
+  #okLabel: TextHandle | undefined;
+  #prompt!: TextHandle;
   #t = 0;
+  #exitIn = -1; // >= 0 once OK is confirmed: seconds until we leave for Intro
 
-  constructor(sm: ITransition, text: TextManager, render: RenderingManager, score: Score, hi: HiScore) {
+  constructor(sm: ITransition, world: World, text: TextManager, render: RenderingManager, score: Score, hi: HiScore) {
     super();
     this.#sm = sm;
+    this.#world = world;
     this.#text = text;
     this.#render = render;
     this.#score = score;
@@ -53,68 +64,133 @@ export class NameEntryState extends State {
     this.on(SelectCommand, this.#onSelect);
   }
 
-  #letterAt(phase: number): string {
-    return LETTERS[(Math.floor(this.#t / STEP_S) + phase) % 26];
-  }
+  #char(): string { return CHARS[Math.floor(this.#t / STEP_S) % CHARS.length]; }
 
   override enter() {
     this.#t = 0;
-    for (let i = 0; i < 3; i++) {
-      const mesh = new Mesh(this.#geo, new MeshPhongMaterial({ color: '#dddddd' }));
-      mesh.position.set(SLOT_X[i], Y_m, 0);
-      this.#render.anchor.add(mesh);
-      const label = this.#text.show('A', mesh, { color: '#111111' });
-      this.#slots.push({ mesh, label, letter: 'A', phase: i * 7, locked: false });
-    }
-    this.#confirm = new Mesh(this.#geo, new MeshPhongMaterial({ color: CONFIRM_HEX }));
-    this.#confirm.position.set(0, Y_m, CONFIRM_Z);
-    this.#render.anchor.add(this.#confirm);
-    this.#labels.push(this.#text.show('OK', this.#confirm, { color: '#ffffff' }));
-    this.#labels.push(this.#text.show('NEW HI', this.#render.hudAnchor, { color: '#ffcc33' }));
+    this.#exitIn = -1;
+    this.#slots = [];
+    this.#okId = -1;
+    this.#prompt = this.#text.show('NEW HI', this.#render.hudAnchor, { color: '#ffcc33' });
+    this.#raiseSlot(0);
   }
 
-  override update(delta: number) {
+  #raiseSlot(i: number): void {
+    const id = this.#world.spawnAtHole(HOLES[i], RAINBOW[PAIR[i][0]], Infinity, i);
+    if (id < 0) return;
+    const label = this.#text.show(this.#char(), this.#actorAnchor(id), { color: '#ffffff' }); // readable on any rainbow body
+    this.#slots.push({ id, label, char: this.#char(), locked: false });
+  }
+
+  #raiseOk(): void {
+    this.#okId = this.#world.spawnAtHole(HOLES[3], OK_HEX, Infinity, OK_TAG);
+    if (this.#okId < 0) return;
+    this.#okLabel = this.#text.show('OK', this.#actorAnchor(this.#okId), { color: '#ffffff' });
+  }
+
+  // The label rides the actor's mesh so it lifts with the rise; the voxel engine
+  // billboards it regardless.
+  #actorAnchor(id: number) {
+    return this.#world.actorMesh(id) ?? this.#render.anchor;
+  }
+
+  override update(delta: number): void {
+    this.#world.update(delta); // ticks the actor rise + the sparkle bursts
     this.#t += delta;
-    for (const s of this.#slots) {
-      if (s.locked) continue;
-      s.letter = this.#letterAt(s.phase);
-      this.#text.setText(s.label, s.letter);
-      s.mesh.rotation.y += delta * SPIN_RPS;
-    }
-  }
 
-  #onSelect = (cmd: SelectCommand) => {
-    if (__DEV__ && cmd.debugRandom) {
-      const s = this.#slots.find((x) => !x.locked);
-      if (s) s.locked = true; else this.#confirmName();
+    if (this.#exitIn >= 0) {
+      this.#exitIn -= delta;
+      if (this.#exitIn <= 0) this.#sm.change(IntroState);
       return;
     }
-    _o.setFromMatrixPosition(cmd.transform.matrixWorld);
-    _d.set(0, 0, -1).transformDirection(cmd.transform.matrixWorld);
-    this.#ray.set(_o, _d);
-    const hit = this.#ray.intersectObjects([...this.#slots.map((s) => s.mesh), this.#confirm], false)[0]?.object;
-    if (!hit) return;
-    if (hit === this.#confirm) { this.#confirmName(); return; }
-    const s = this.#slots.find((x) => x.mesh === hit)!;
-    s.locked = !s.locked; // lock at the shown letter, or unlock to resume cycling
-  };
 
-  #confirmName() {
-    if (this.#slots.some((s) => !s.locked)) return;
-    this.#hi.submit(this.#score.value, this.#slots.map((s) => s.letter).join(''));
-    this.#sm.change(IntroState);
+    const c = this.#char();
+    for (const s of this.#slots) {
+      if (s.locked || s.char === c) continue;
+      s.char = c;
+      this.#text.setText(s.label, c);
+    }
   }
 
-  override exit() {
-    for (const s of this.#slots) {
-      this.#text.remove(s.label);
-      this.#render.anchor.remove(s.mesh);
-      s.mesh.material.dispose();
+  #onSelect = (cmd: SelectCommand): void => {
+    if (this.#exitIn >= 0) return;
+
+    let id: number;
+    if (__DEV__ && cmd.debugRandom) {
+      const next = this.#slots.find((s) => !s.locked); // keyboard: act on the first cycling slot, else OK
+      id = next ? next.id : this.#okId;
+    } else {
+      _o.setFromMatrixPosition(cmd.transform.matrixWorld);
+      _d.set(0, 0, -1).transformDirection(cmd.transform.matrixWorld);
+      const hit = this.#world.hitTestActor(_ray.set(_o, _d), cmd.reach || undefined);
+      if (!hit) return;
+      id = hit.id;
     }
-    this.#slots.length = 0;
-    this.#render.anchor.remove(this.#confirm);
-    this.#confirm.material.dispose();
-    for (const h of this.#labels) this.#text.remove(h);
-    this.#labels.length = 0;
+
+    if (id === this.#okId) { this.#confirm(); return; }
+
+    const s = this.#slots.find((x) => x.id === id);
+    if (!s) return;
+    const i = this.#slots.indexOf(s);
+
+    if (s.locked) {
+      s.locked = false;
+      this.#world.recolorActor(s.id, RAINBOW[PAIR[i][0]]);
+      if (this.#okId >= 0 && this.#lockedCount() < 3) this.#sinkOk(); // fewer than 3 locked -> OK goes away
+    } else {
+      s.locked = true;
+      this.#world.recolorActor(s.id, RAINBOW[PAIR[i][1]]);
+      if (i < 2 && this.#slots.length === i + 1) this.#raiseSlot(i + 1);
+      else if (this.#slots.length === 3 && this.#lockedCount() === 3 && this.#okId < 0) this.#raiseOk();
+    }
+  };
+
+  #lockedCount(): number {
+    let n = 0;
+    for (const s of this.#slots) if (s.locked) n++;
+    return n;
+  }
+
+  #sinkOk(): void {
+    this.#burst(this.#okId);
+    if (this.#okLabel) { this.#text.remove(this.#okLabel); this.#okLabel = undefined; }
+    this.#okId = -1;
+  }
+
+  #confirm(): void {
+    if (this.#slots.length < 3 || this.#lockedCount() < 3) return;
+
+    const name = this.#slots.map((s) => s.char).join('');
+    this.#hi.submit(this.#score.value, name);
+
+    for (const s of this.#slots) { this.#burst(s.id); this.#text.remove(s.label); }
+    this.#burst(this.#okId);
+    if (this.#okLabel) { this.#text.remove(this.#okLabel); this.#okLabel = undefined; }
+    this.#slots = [];
+    this.#okId = -1;
+
+    if (name === L13_NAME) {
+      try { localStorage.setItem('gamma.l13', '1'); } catch { /* not persisted */ }
+      this.#text.setText(this.#prompt, '13 UNLOCKED');
+    } else {
+      this.#text.setText(this.#prompt, 'SAVED');
+    }
+    this.#exitIn = EXIT_BEAT_S;
+  }
+
+  // Standard hit explosion at the actor's position, then remove it.
+  #burst(id: number): void {
+    const r = this.#world.despawnActor(id);
+    if (r) this.#world.burstSparkles(r.position, r.color, 'explode');
+  }
+
+  override exit(): void {
+    for (const s of this.#slots) { this.#text.remove(s.label); this.#world.despawnActor(s.id); }
+    this.#slots = [];
+    if (this.#okId >= 0) this.#world.despawnActor(this.#okId);
+    this.#okId = -1;
+    if (this.#okLabel) { this.#text.remove(this.#okLabel); this.#okLabel = undefined; }
+    this.#text.remove(this.#prompt);
+    this.#exitIn = -1;
   }
 }

@@ -7,7 +7,7 @@ import type { Object3D, Vector3, Ray } from 'three';
 
 import { Gameboard } from './Gameboard';
 import { Actors } from './Actors';
-import type { RemovedActor } from './Actors';
+import type { RemovedActor, ActorHit } from './Actors';
 import { Rainbow } from './Rainbow';
 import { Sparkles } from '../animation/Sparkles';
 import type { BurstMode } from '../animation/Sparkles';
@@ -40,14 +40,40 @@ export class World {
 
   // Raise a body of `colorHex` from `hole`, up for `hold` seconds, carrying `tag`.
   // `decoy` gives it the unicorn's pink horn and makes a tap non-destructive.
-  spawnAtHole(hole: number, colorHex: string, hold: number, tag: number, decoy = false): void {
-    const mesh = this.#actors.spawn(this.#board.holeAt(hole), colorHex, hold, tag, decoy);
-    if (!mesh) return;
+  // `hold` may be Infinity for a body that stays up until despawned explicitly.
+  // Returns the new actor's id (NameEntryState tracks its cylinders), or -1.
+  spawnAtHole(hole: number, colorHex: string, hold: number, tag: number, decoy = false): number {
+    const spawned = this.#actors.spawn(this.#board.holeAt(hole), colorHex, hold, tag, decoy);
+    if (!spawned) return -1;
     try {
-      this.#audio.playAt(mesh, 'spawn'); // the pop comes from the hole
+      this.#audio.playAt(spawned.mesh, 'spawn'); // the pop comes from the hole
     } catch {
       // audio can fail in restricted/sandboxed contexts — the body still appears
     }
+    return spawned.id;
+  }
+
+  // Non-destructive hit query (NameEntryState decides what a hit means — lock a
+  // letter, revert one, or confirm — none of which despawn the way World.hit does).
+  hitTestActor(ray: Ray, radius = PROXIMITY_R_m): ActorHit | null {
+    return this.#actors.hitTest(ray, radius);
+  }
+
+  // A live actor's mesh (NameEntryState parents its cycling letter label to it,
+  // so the label lifts with the rise). undefined once the actor is gone.
+  actorMesh(id: number): Object3D | undefined {
+    return this.#actors.meshOf(id);
+  }
+
+  // Repaint a live actor's body (NameEntryState: cycling colour <-> locked colour).
+  recolorActor(id: number, colorHex: string): void {
+    this.#actors.meshOf(id)?.material.color.set(colorHex);
+  }
+
+  // Remove one actor now; returns its colour + last (anchor-local) position so the
+  // caller can fire the standard explode burst there.
+  despawnActor(id: number): RemovedActor | null {
+    return this.#actors.despawn(id);
   }
 
   burstSparkles(origin: Vector3, color: Color, mode?: BurstMode): void {

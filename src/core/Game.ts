@@ -75,15 +75,17 @@ export class Game {
     sm.register(RunState, new RunState(this.#world, this.#audio, this.#haptics, sm, this.#text, this.#render, score, level));
     sm.register(WinState, new WinState(sm, this.#text, this.#render.hudAnchor, score, level, this.#hiScore, RunState, this.#audio));
     sm.register(GameOverState, new GameOverState(sm, this.#text, this.#render.hudAnchor, score, this.#hiScore, this.#audio));
-    sm.register(NameEntryState, new NameEntryState(sm, this.#text, this.#render, score, this.#hiScore));
+    sm.register(NameEntryState, new NameEntryState(sm, this.#world, this.#text, this.#render, score, this.#hiScore));
 
-    const debugRun = __DEV__ && 'run' in getQuery();
-    if (debugRun) {
+    const q = getQuery();
+    const debugRun = __DEV__ && 'run' in q;
+    const debugName = __DEV__ && 'name' in q; // jump straight to NameEntryState
+    if (debugRun || debugName) {
       this.#render.anchor.position.set(0, 0, -0.6);
       this.#render.camera.position.set(0, 0.6, 0.4);
       this.#render.camera.lookAt(0, 0, -0.6);
     }
-    sm.start(debugRun ? RunState : IntroState);
+    sm.start(debugName ? NameEntryState : debugRun ? RunState : IntroState);
     return sm;
   }
 

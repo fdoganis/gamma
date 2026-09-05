@@ -71,7 +71,9 @@ export class Actors {
   // `tag`; it sinks and despawns on its own. `decoy` adds a pink horn cone (the
   // unicorn) and marks it as a body that survives a tap. Returns the mesh (for
   // audio / hit-test) or null if the hole is already taken.
-  spawn(hole: Hole, colorHex: string, hold: number, tag: number, decoy = false): Mesh<CylinderGeometry, MeshPhongMaterial> | null {
+  // `hold` may be Infinity — the body then stays up until it is despawned
+  // explicitly (NameEntryState's letter cylinders).
+  spawn(hole: Hole, colorHex: string, hold: number, tag: number, decoy = false): { id: number; mesh: Mesh<CylinderGeometry, MeshPhongMaterial> } | null {
     if (!hole.free) return null;
     hole.free = false;
 
@@ -86,8 +88,8 @@ export class Actors {
     this.#root.add(mesh);
     mesh.updateWorldMatrix(true, false); // same-frame world pose for callers
 
-    this.#em.create({ mesh, hole, tag, decoy, phase: 'rising', phaseT: 0, hold });
-    return mesh;
+    const id = this.#em.create({ mesh, hole, tag, decoy, phase: 'rising', phaseT: 0, hold });
+    return { id, mesh };
   }
 
   // Ray hit against live actors; falls back to the nearest actor within
