@@ -1,11 +1,11 @@
 // Beat the hi-score -> sign your initials by whacking them, whack-a-mole style.
 // Three letter cylinders rise one at a time from the middle row of holes, each
-// with a voxel char on top that auto-cycles the full printable set. Whack a
-// cycling one to freeze its char (it recolours to its "locked" rainbow shade
-// and the next slot rises); whack a locked one to unfreeze it (recolours back,
-// resumes cycling). A violet OK cylinder rises once all three are locked and
-// sinks again if you unlock one. Whack OK -> every cylinder bursts (standard
-// hit explosion), HiScore.submit, -> Intro. Entering "13K" unlocks level 13.
+// with a voxel char on top that auto-cycles the HUD charset. Whack a cycling one
+// to freeze its char (it recolours to its "locked" rainbow shade and the next
+// slot rises); whack a locked one to unfreeze it (recolours back, resumes
+// cycling). A violet OK cylinder rises once all three are locked and sinks again
+// if you unlock one. Whack OK -> every cylinder bursts (standard hit explosion),
+// HiScore.submit, -> Intro (or straight into level 13 if you signed "13K").
 //
 // Reuses the gameplay loop: World's Actors for the rising bodies, the same
 // ray/proximity hit query, the same Sparkles burst.
@@ -22,8 +22,8 @@ import type { TextHandle } from '../text/ITextEngine';
 import type { Score } from '../core/Score';
 import type { HiScore } from '../core/HiScore';
 
-// A-Z, 0-9, then the rest of printable ASCII in code order (no lowercase).
-const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 !"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~';
+// The whole 'light' glyph set — same as the HUD, nothing extra to ship.
+const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -+';
 const STEP_S = 0.12;                       // seconds per cycled character
 const HOLES = [0, 1, 4, 5];               // middle row, left -> right: slots A/B/C, then OK
 const PAIR = [[0, 1], [2, 3], [4, 5]];    // per slot: [cycling, locked] RAINBOW indices — red<->orange, yellow<->green, blue<->indigo

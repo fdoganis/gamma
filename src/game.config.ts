@@ -10,11 +10,11 @@
 export const TEXT_ENGINE: 'voxel' | 'segment' = 'voxel';
 
 // Glyph source for VoxelTextEngine:
-//   'light'  — ~38 glyphs (0-9 A-Z space + -), the game's HUD charset, smallest
-//   'full'   — the whole 95-glyph LittleJS font (default: NameEntryState cycles
-//              the full printable set for initials)
+//   'light'  — ~38 glyphs (space + - 0-9 A-Z), the game's whole charset incl.
+//              NameEntryState's initials cycle, smallest (default)
+//   'full'   — the whole 95-glyph LittleJS font
 //   'canvas' — rasterise the browser's monospace font, no glyph data shipped
-export const GLYPH_SOURCE: 'full' | 'light' | 'canvas' = 'full';
+export const GLYPH_SOURCE: 'full' | 'light' | 'canvas' = 'light';
 
 // Voxel text shading:
 //   'phong'  — MeshPhongMaterial lit by the scene (picks up the sky tint)
