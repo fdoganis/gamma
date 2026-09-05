@@ -71,29 +71,31 @@ export class Game {
   #buildStateMachine(): StateMachine {
     const sm = new StateMachine();
     const score = this.#score, level = this.#level;
+
+    const q = getQuery();
+    const debugRun = __DEV__ && 'run' in q;
+    const debugName = __DEV__ && 'name' in q;   // jump straight to NameEntryState
+    const debugL13 = __DEV__ && 'l13' in q;     // jump straight into the level 13 run
+    const debugCalib = __DEV__ && 'calib' in q; // hand-whack calibration — Anchor → CalibState
+
     sm.register(IntroState, new IntroState(sm, this.#text, this.#render.hudAnchor, score, level));
-    sm.register(AnchorState, new AnchorState(this.#render, sm));
+    const anchor = new AnchorState(this.#render, sm);
+    if (debugCalib) anchor.next = CalibState; // place the board, then calibrate on it
+    sm.register(AnchorState, anchor);
     sm.register(RunState, new RunState(this.#world, this.#audio, this.#haptics, sm, this.#text, this.#render, score, level));
     sm.register(WinState, new WinState(sm, this.#text, this.#render.hudAnchor, score, level, this.#hiScore, RunState, this.#audio));
     sm.register(GameOverState, new GameOverState(sm, this.#text, this.#render.hudAnchor, score, this.#hiScore, this.#audio));
     sm.register(NameEntryState, new NameEntryState(sm, this.#world, this.#text, this.#render, score, level, this.#hiScore, RunState));
     if (__DEV__) sm.register(CalibState, new CalibState(sm, this.#world, this.#text, this.#render));
 
-    const q = getQuery();
-    const debugRun = __DEV__ && 'run' in q;
-    const debugName = __DEV__ && 'name' in q;   // jump straight to NameEntryState
-    const debugL13 = __DEV__ && 'l13' in q;     // jump straight into the level 13 run
-    const debugCalib = __DEV__ && 'calib' in q; // hand-whack calibration (CalibState)
     if (debugRun || debugName || debugL13 || debugCalib) {
-      // calib is a real-headset tool — float the board at ~table height, ~0.5m
-      // ahead, so the cubes sit over the user's actual tabletop to whack.
-      this.#render.anchor.position.set(0, debugCalib ? 0.72 : 0, debugCalib ? -0.5 : -0.6);
+      this.#render.anchor.position.set(0, 0, -0.6);
       this.#render.camera.position.set(0, 0.6, 0.4);
-      this.#render.camera.lookAt(0, debugCalib ? 0.72 : 0, -0.6);
+      this.#render.camera.lookAt(0, 0, -0.6);
     }
     if (debugL13) level.set(13);
     sm.start(
-      debugCalib ? CalibState :
+      debugCalib ? AnchorState : // → CalibState once placed (or after the dev floor-skip)
       debugName ? NameEntryState :
       debugRun || debugL13 ? RunState :
       IntroState,
