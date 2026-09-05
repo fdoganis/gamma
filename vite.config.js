@@ -12,13 +12,15 @@ const recordSink = {
     configureServer(server) {
         server.middlewares.use('/__record', (req, res) => {
             if (req.method !== 'POST') { res.statusCode = 405; return res.end(); }
+            const name = (new URL(req.url, 'http://x').searchParams.get('to') || 'whack').replace(/[^a-z0-9-]/gi, '') || 'whack';
             const chunks = [];
             req.on('data', (c) => chunks.push(c));
             req.on('end', () => {
+                const buf = Buffer.concat(chunks);
                 mkdirSync('tests/fixtures', { recursive: true });
-                const file = `tests/fixtures/whack-${Date.now()}.json`;
-                writeFileSync(file, Buffer.concat(chunks));
-                console.log(`\n[record-sink] saved ${file} (${Buffer.concat(chunks).length} bytes)\n`);
+                const file = `tests/fixtures/${name}-${Date.now()}.json`;
+                writeFileSync(file, buf);
+                console.log(`\n[record-sink] saved ${file} (${buf.length} bytes)\n`);
                 res.setHeader('content-type', 'text/plain');
                 res.end(file);
             });
