@@ -40,3 +40,6 @@ blob-report
 .playwright
 
 *.code-workspace
+
+# calibration captures from the /__record dev sink
+tests/fixtures/
