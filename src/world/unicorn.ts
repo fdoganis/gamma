@@ -12,18 +12,18 @@ import {
 const PINK = 0xd8899b;
 const MANE = ['#F00', '#FF7F00', '#FF0', '#0F0', '#00F']; // crest → nape
 
-// one S-curved strand that FLOWS DOWN the nape, reused (rotated) for every hair
+// one long S-curved strand that FLOWS DOWN the back, reused (rotated) for every hair
 const STRAND = new CatmullRomCurve3([
   new Vector3(0, 0, 0),
-  new Vector3(0.006, -0.022, -0.012),
-  new Vector3(-0.005, -0.05, -0.02),
-  new Vector3(0.003, -0.08, -0.026),
+  new Vector3(0.012, -0.045, -0.025),
+  new Vector3(-0.01, -0.10, -0.04),
+  new Vector3(0.006, -0.16, -0.05),
 ]);
 
 const hornGeo = new CylinderGeometry(0, 0.022, 0.07, 10);
 const eyeGeo = new SphereGeometry(0.012, 8, 6);
 const cheekGeo = new SphereGeometry(0.009, 6, 5);
-const maneGeo = new TubeGeometry(STRAND, 12, 0.004, 5, false);
+const maneGeo = new TubeGeometry(STRAND, 16, 0.005, 5, false);
 const pinkMat = new MeshPhongMaterial({ color: PINK });
 const eyeMat = new MeshPhongMaterial({ color: 0x111111 });
 const maneMat = MANE.map((c) => new MeshBasicMaterial({ color: c }));
@@ -43,11 +43,12 @@ export function dressUnicorn(body: Object3D, halfH: number) {
   horn.rotation.x = 0.22; // ~13° toward the viewer (+Z)
   body.add(horn);
 
-  // mane sprouts from the nape well BELOW the horn and hangs further down the back
+  // mane sprouts from the crest at the top of the head, just behind the horn,
+  // and hangs the full length of the back
   const strands = maneMat.map((mat, k) => {
     const s = new Mesh(maneGeo, mat);
-    s.position.set((k - 2) * 0.007, halfH * 0.42, -0.02);
-    s.rotation.z = (k - 2) * 0.16;
+    s.position.set((k - 2) * 0.007, halfH * 0.95, -0.008);
+    s.rotation.z = (k - 2) * 0.14;
     s.userData.baseScale = 0.95 - Math.abs(k - 2) * 0.08;
     s.userData.baseRotZ = s.rotation.z;
     s.userData.phase = k * 1.3;

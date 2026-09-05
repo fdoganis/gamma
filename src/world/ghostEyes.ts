@@ -1,50 +1,69 @@
-// Pac-Man-style eyes for a normal (non-decoy) body: a white tile with a dark
-// pupil, ×2, on the front of the capsule. The eye pair yaws toward the player
-// (Y axis only, like the billboarded text) and the pupils slide within the
-// whites — toward the player left/right, and up/down with the body's rise/sink.
-// A function + an update closure, not a class (see unicorn.ts for the why).
-import { Mesh, MeshBasicMaterial, BoxGeometry, Object3D, Vector3, MathUtils } from 'three';
+// Googly Pac-Man-ghost eyes for a normal (non-decoy) body: a white eyeball
+// capsule with a loose blue sphere pupil. An Object3D "face" yaws toward the
+// player (Y axis, like the billboarded text); each pupil springs toward the
+// direction of the player's head for eye contact, and gets a downward kick from
+// the body's rise/sink so it jiggles. Function + update closure, not a class.
+import {
+  Mesh, MeshPhongMaterial, CapsuleGeometry, SphereGeometry, Object3D, Vector3, MathUtils,
+} from 'three';
 
-const whiteGeo = new BoxGeometry(0.02, 0.026, 0.006);
-const pupilGeo = new BoxGeometry(0.01, 0.012, 0.004);
-const whiteMat = new MeshBasicMaterial({ color: 0xffffff });
-const pupilMat = new MeshBasicMaterial({ color: 0x101014 });
+const eyeGeo = new CapsuleGeometry(0.011, 0.012, 3, 8);
+const pupilGeo = new SphereGeometry(0.006, 8, 6);
+const whiteMat = new MeshPhongMaterial({ color: 0xffffff });
+const pupilMat = new MeshPhongMaterial({ color: 0x1b48d6, shininess: 60 });
 
-const YAW_MAX = 0.7;   // rad — how far the eyes will swivel before they give up tracking
-const PUPIL_MAX = 0.005;
+const YAW_MAX = 0.8;
+const RANGE = 0.006;  // how far the pupil can roam on the eyeball
+const SPRING = 120;   // pull toward the target — higher = snappier
+const DAMP = 0.78;    // <1 leaves some overshoot → the googly jiggle
+const KICK = 0.03;    // rise/sink acceleration → pupil impulse
 
 const _cam = new Vector3();
 
 export function dressGhost(body: Object3D, halfH: number) {
-  const face = new Object3D(); // holds both eyes so one yaw tracks the player
+  const face = new Object3D(); // both eyes, one yaw tracks the player
   face.position.set(0, halfH * 0.55, 0);
   body.add(face);
 
-  const pupils: Object3D[] = [];
-  for (const sx of [-1, 1]) {
-    const white = new Mesh(whiteGeo, whiteMat);
-    white.position.set(sx * 0.013, 0, 0.044); // on the capsule's front surface
+  const eyes = [-1, 1].map((sx) => {
+    const white = new Mesh(eyeGeo, whiteMat);
+    white.position.set(sx * 0.014, 0, 0.043);
     face.add(white);
     const pupil = new Mesh(pupilGeo, pupilMat);
-    pupil.position.z = 0.004;
+    pupil.position.z = 0.006;
     white.add(pupil);
-    pupils.push(pupil);
-  }
+    return { pupil, x: 0, y: 0, vx: 0, vy: 0 };
+  });
+
+  let prevYSpeed = 0;
 
   return {
-    update(_delta: number, ySpeed: number, camPos: Vector3): void {
-      // player position in the body's local frame → yaw + horizontal pupil bias
+    update(delta: number, ySpeed: number, camPos: Vector3): void {
       body.worldToLocal(_cam.copy(camPos));
-      const yaw = Math.atan2(_cam.x, _cam.z);
-      face.rotation.y = MathUtils.clamp(yaw, -YAW_MAX, YAW_MAX);
-      const px = MathUtils.clamp(yaw * 0.006, -PUPIL_MAX, PUPIL_MAX);
-      const py = MathUtils.clamp(ySpeed * 0.015, -PUPIL_MAX, PUPIL_MAX); // look up rising, down sinking
-      for (const p of pupils) { p.position.x = px; p.position.y = py; }
+      face.rotation.y = MathUtils.clamp(Math.atan2(_cam.x, _cam.z), -YAW_MAX, YAW_MAX);
+      face.updateMatrixWorld();
+
+      face.worldToLocal(_cam.copy(camPos)); // player head in the turned face's frame
+      const d = _cam.length() || 1;
+      const tx = MathUtils.clamp((_cam.x / d) * 0.02, -RANGE, RANGE);
+      const ty = MathUtils.clamp((_cam.y / d) * 0.02, -RANGE, RANGE);
+
+      const kick = (ySpeed - prevYSpeed) * KICK; // pop up → pupils lag down, then spring back
+      prevYSpeed = ySpeed;
+
+      for (const e of eyes) {
+        e.vx = (e.vx + (tx - e.x) * SPRING * delta) * DAMP;
+        e.vy = (e.vy + (ty - e.y - kick) * SPRING * delta) * DAMP;
+        e.x += e.vx * delta;
+        e.y += e.vy * delta;
+        e.pupil.position.x = e.x;
+        e.pupil.position.y = e.y;
+      }
     },
   };
 }
 
 export function disposeGhostAssets(): void {
-  for (const g of [whiteGeo, pupilGeo]) g.dispose();
+  for (const g of [eyeGeo, pupilGeo]) g.dispose();
   for (const m of [whiteMat, pupilMat]) m.dispose();
 }
