@@ -78,7 +78,11 @@ export class Actors {
     if (!hole.free) return null;
     hole.free = false;
 
-    const mesh = new Mesh(this.#geo, new MeshPhongMaterial({ color: colorHex }));
+    // a soft self-glow: the body emits ~15% of its own color → a cheap "lit from
+    // within" look that softens the shading and reads as a spirit
+    const mat = new MeshPhongMaterial({ color: colorHex, shininess: 40 });
+    mat.emissive.copy(mat.color).multiplyScalar(0.16);
+    const mesh = new Mesh(this.#geo, mat);
     mesh.castShadow = true;
     mesh.position.set(hole.x, HIDDEN_Y_m, hole.z);
     const trim = decoy ? dressUnicorn(mesh, BODY_HALF_m) : dressGhost(mesh, BODY_HALF_m); // rides along with every rise / sink / cull

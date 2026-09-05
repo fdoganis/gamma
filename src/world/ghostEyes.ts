@@ -4,13 +4,14 @@
 // direction of the player's head for eye contact, and gets a downward kick from
 // the body's rise/sink so it jiggles. Function + update closure, not a class.
 import {
-  Mesh, MeshPhongMaterial, MeshBasicMaterial, CapsuleGeometry, SphereGeometry, Object3D, Vector3, MathUtils,
+  Mesh, MeshPhongMaterial, CapsuleGeometry, SphereGeometry, Object3D, Vector3, MathUtils,
 } from 'three';
 
 const eyeGeo = new CapsuleGeometry(0.011, 0.012, 3, 8);
 const pupilGeo = new SphereGeometry(0.0065, 8, 6);
 const whiteMat = new MeshPhongMaterial({ color: 0xffffff });
-const pupilMat = new MeshBasicMaterial({ color: 0x050505 }); // flat void black, same as the pits — let the body colour be the star
+// void black, but wet: a tiny bright specular so the pupil always has a glint
+const pupilMat = new MeshPhongMaterial({ color: 0x050505, specular: 0xffffff, shininess: 320 });
 
 const YAW_MAX = 0.8;
 const RANGE = 0.006;  // how far the pupil can roam on the eyeball

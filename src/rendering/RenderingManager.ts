@@ -9,7 +9,7 @@ import {
   PlaneGeometry,
   ShadowMaterial,
   Group,
-  NoToneMapping,
+  ACESFilmicToneMapping,
   SRGBColorSpace
 } from 'three';
 import { XRButton } from 'three/addons/webxr/XRButton.js';
@@ -27,7 +27,8 @@ export class RenderingManager {
 
   constructor() {
     this.renderer = new WebGLRenderer({ antialias: true, alpha: true });
-    this.renderer.toneMapping = NoToneMapping;
+    this.renderer.toneMapping = ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.15; // softer highlights, gentle filmic rolloff
     this.renderer.outputColorSpace = SRGBColorSpace;
 
     this.renderer.setPixelRatio(window.devicePixelRatio);

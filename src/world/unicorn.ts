@@ -8,18 +8,19 @@ import {
   Mesh, MeshPhongMaterial, MeshBasicMaterial, CylinderGeometry, SphereGeometry,
   TubeGeometry, CatmullRomCurve3, Vector3, MathUtils, type Object3D,
 } from 'three';
+import { RAINBOW } from '../core/palette';
 
 const PINK = 0xd8899b;
-const MANE = ['#F00', '#FF7F00', '#FF0', '#0F0', '#00F']; // crest → nape
+const MANE = RAINBOW; // 7 strands, full ROYGBIV, protruding off the back of the head
 
-// a strand that CRESTS over the crown (rises above the capsule, arcs back) then
-// cascades down the back — so it reads from the front, not swallowed by the head
+// a strand that sprouts up from the crown then arcs BACK and down, protruding
+// well off the back of the head
 const STRAND = new CatmullRomCurve3([
-  new Vector3(0, 0, 0.004),
-  new Vector3(0.006, 0.028, -0.008),  // up and back — the crest, above the capsule top
-  new Vector3(-0.007, 0.012, -0.05),  // over the top, coming down the back
-  new Vector3(0.005, -0.06, -0.085),
-  new Vector3(0, -0.15, -0.095),      // tail
+  new Vector3(0, 0, 0),
+  new Vector3(0.004, 0.022, -0.02),   // up and back
+  new Vector3(-0.005, 0.006, -0.06),  // arcing back, above/behind the head
+  new Vector3(0.004, -0.05, -0.10),
+  new Vector3(0, -0.13, -0.115),      // tail, well clear of the body
 ]);
 
 const hornGeo = new CylinderGeometry(0, 0.022, 0.07, 10);
@@ -37,7 +38,7 @@ export function dressUnicorn(body: Object3D, halfH: number) {
     eye.position.set(sx * 0.016, halfH * 0.5, 0.038);
     body.add(eye);
     const cheek = new Mesh(cheekGeo, pinkMat);
-    cheek.position.set(sx * 0.033, halfH * 0.3, 0.035); // faint blush under the eyes
+    cheek.position.set(sx * 0.026, halfH * 0.3, 0.02); // tucked into the body, just a hint of blush
     body.add(cheek);
   }
   const horn = new Mesh(hornGeo, pinkMat);
@@ -45,14 +46,16 @@ export function dressUnicorn(body: Object3D, halfH: number) {
   horn.rotation.x = 0.22; // ~13° toward the viewer (+Z)
   body.add(horn);
 
-  // mane sprouts from the crown just behind the horn, fanned wide so the outer
-  // strands splay past the head and stay visible
+  // 7 rainbow strands from the crown, fanned wide + splayed so they stand off
+  // the back of the head
+  const mid = (maneMat.length - 1) / 2;
   const strands = maneMat.map((mat, k) => {
+    const d = k - mid;
     const s = new Mesh(maneGeo, mat);
-    s.position.set((k - 2) * 0.006, halfH, -0.006);
-    s.rotation.z = (k - 2) * 0.28;
-    s.rotation.y = (k - 2) * 0.12; // splay left/right
-    s.userData.baseScale = 1 - Math.abs(k - 2) * 0.06;
+    s.position.set(d * 0.005, halfH, -0.012);
+    s.rotation.z = d * 0.2;
+    s.rotation.y = d * 0.1; // splay left/right
+    s.userData.baseScale = 1 - Math.abs(d) * 0.05;
     s.userData.baseRotZ = s.rotation.z;
     s.userData.phase = k * 1.3;
     s.scale.setScalar(s.userData.baseScale);

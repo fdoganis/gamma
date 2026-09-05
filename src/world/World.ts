@@ -67,7 +67,8 @@ export class World {
 
   // Repaint a live actor's body (NameEntryState: cycling colour <-> locked colour).
   recolorActor(id: number, colorHex: string): void {
-    this.#actors.meshOf(id)?.material.color.set(colorHex);
+    const mat = this.#actors.meshOf(id)?.material;
+    if (mat) { mat.color.set(colorHex); mat.emissive.copy(mat.color).multiplyScalar(0.16); }
   }
 
   // Remove one actor now; returns its colour + last (anchor-local) position so the
