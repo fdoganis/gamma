@@ -7,6 +7,8 @@
 // false-positive data. Phase 3: press the headset menu button — `sessionend`
 // POSTs the capture to the dev server (vite.config.js /__record sink), landing
 // in tests/fixtures/. The whole class folds out of the shipped bundle.
+//
+// Full run guide (headset setup, tunnel, what to record): tests/tools/README.md
 import { Vector3 } from 'three';
 import { State } from '../core/State';
 import { SelectCommand } from '../commands/SelectCommand';
