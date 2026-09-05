@@ -1,6 +1,30 @@
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { defineConfig } from 'vite';
 import glsl from 'vite-plugin-glsl';
 import { viteSingleFile } from "vite-plugin-singlefile";
+
+// Dev-only: the XR hand recorder page (tests/tools/xr-hand-recorder.html) POSTs
+// its capture here so it lands on the machine running `npm run dev` — no cable,
+// no file transfer off the headset. Saves to tests/fixtures/whack-<ts>.json.
+const recordSink = {
+    name: 'record-sink',
+    apply: 'serve',
+    configureServer(server) {
+        server.middlewares.use('/__record', (req, res) => {
+            if (req.method !== 'POST') { res.statusCode = 405; return res.end(); }
+            const chunks = [];
+            req.on('data', (c) => chunks.push(c));
+            req.on('end', () => {
+                mkdirSync('tests/fixtures', { recursive: true });
+                const file = `tests/fixtures/whack-${Date.now()}.json`;
+                writeFileSync(file, Buffer.concat(chunks));
+                console.log(`\n[record-sink] saved ${file} (${Buffer.concat(chunks).length} bytes)\n`);
+                res.setHeader('content-type', 'text/plain');
+                res.end(file);
+            });
+        });
+    },
+};
 
 export default defineConfig(({ mode }) => {
     const isProd = mode === 'production';
@@ -41,6 +65,7 @@ export default defineConfig(({ mode }) => {
         plugins: [
             glsl(),
             viteSingleFile(),
+            !isProd && recordSink,
             isProd && {
                 name: 'runtime-cdn-selector',
                 transformIndexHtml(html) {

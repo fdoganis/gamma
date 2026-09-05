@@ -21,14 +21,16 @@
 </head>
 <body>
 <h1>gamma — XR hand whack recorder</h1>
-<p>Open on the headset (dev server / <code>npm run cloud</code> URL + this path). Enter XR with
-   <b>hand tracking</b>, do ~10 real whacks over your table, plus a few non-whacks
-   (waving a hand across the board, reaching over) for false-positive data. Exit XR to stop —
-   the JSON + a summary appear below.</p>
+<p>Open on the headset via the <code>npm run cloud</code> https URL + this path. Enter XR with
+   <b>hand tracking</b>; do ~12 real whacks over your table (vary speed &amp; angle, pause ~1s
+   between), then ~10 non-whacks (glide sideways at table height, reach across, lower &amp; rest
+   the hand slowly). Exit XR to stop, then <b>Send to Mac</b> — it lands in
+   <code>tests/fixtures/</code>.</p>
 
 <div class="row">
   <button id="enter">Enter XR</button>
-  <button id="download" disabled>Download JSON</button>
+  <button id="send" disabled>Send to Mac</button>
+  <button id="download" disabled>Download</button>
   <button id="copy" disabled>Copy</button>
   <span id="status">idle</span>
 </div>
@@ -98,8 +100,11 @@ function onEnd() {
   status(`stopped — ${frames.length} frames`);
   const json = JSON.stringify(frames);
   $('out').value = summarise(frames) + '\n\n' + json;
-  $('download').disabled = $('copy').disabled = frames.length === 0;
+  const empty = frames.length === 0;
+  $('download').disabled = $('copy').disabled = $('send').disabled = empty;
 }
+
+const jsonOut = () => $('out').value.split('\n\n').pop();
 
 // Re-run HandSource's own detector over the capture so the numbers below are
 // exactly what the game would see. Prints each downward strike: peak speed,
@@ -136,14 +141,20 @@ const minYAfter = (list, k, n) => { let m = list[k].m[1]; for (let j = k; j < Ma
 const dedupe = (s) => s.filter((x, i) => i === 0 || x.t - s[i - 1].t > 250); // one per ~whack
 
 $('enter').onclick = enter;
+$('send').onclick = async () => {
+  status('sending…');
+  try {
+    const r = await fetch('/__record', { method: 'POST', body: jsonOut() });
+    status(r.ok ? `saved on the Mac: ${await r.text()}` : `send failed (${r.status})`);
+  } catch (e) { status('send failed: ' + e); }
+};
 $('download').onclick = () => {
-  const blob = new Blob([$('out').value.split('\n\n').pop()], { type: 'application/json' });
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
+  a.href = URL.createObjectURL(new Blob([jsonOut()], { type: 'application/json' }));
   a.download = `whack-session-${Date.now()}.json`;
   a.click();
 };
-$('copy').onclick = () => navigator.clipboard?.writeText($('out').value.split('\n\n').pop());
+$('copy').onclick = () => navigator.clipboard?.writeText(jsonOut());
 </script>
 </body>
 </html>
