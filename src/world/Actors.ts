@@ -1,10 +1,8 @@
 // Bodies that emerge straight up out of a Hole, hold, then sink back down and
 // despawn. Generic: an actor does not know its color means "a stolen rainbow
 // color", or why it was told to appear — RunState owns all of that.
-// Backed by the generic EntityManager entity store.
 import { Mesh, MeshPhongMaterial, CylinderGeometry, MathUtils, Raycaster, Vector3 } from 'three';
 import type { Object3D, Ray, Color } from 'three';
-import { EntityManager } from './EntityManager';
 import { easeOutCubic } from '../animation/Easing';
 import type { Hole } from './Hole';
 
@@ -29,6 +27,7 @@ const SINK_S = 0.22;
 type Phase = 'rising' | 'holding' | 'sinking';
 
 type Actor = {
+  id: number;
   mesh: Mesh<CylinderGeometry, MeshPhongMaterial>;
   hole: Hole;
   tag: number;    // opaque caller id (RunState: rainbow color index)
@@ -40,7 +39,8 @@ type Actor = {
 
 export class Actors {
   #root: Object3D;
-  #em = new EntityManager<Actor>();
+  #actors = new Map<number, Actor>(); // live bodies by id — inlined, single consumer
+  #nextId = 0;
   #geo: CylinderGeometry;
   #hornGeo: CylinderGeometry;                 // top radius 0 → a cone (codebase idiom)
   #hornMat: MeshPhongMaterial;                // shared: every unicorn horn is the same pink
@@ -53,17 +53,13 @@ export class Actors {
     this.#hornMat = new MeshPhongMaterial({ color: HORN_HEX });
   }
 
-  get count(): number {
-    let n = 0;
-    this.#em.forEach(() => { n++; });
-    return n;
-  }
+  get count(): number { return this.#actors.size; }
 
   // Rainbow indices of the actors currently alive (so RunState can keep one
   // actor per color).
   activeTags(): number[] {
     const tags: number[] = [];
-    this.#em.forEach((a) => { tags.push(a.tag); });
+    for (const a of this.#actors.values()) tags.push(a.tag);
     return tags;
   }
 
@@ -88,7 +84,8 @@ export class Actors {
     this.#root.add(mesh);
     mesh.updateWorldMatrix(true, false); // same-frame world pose for callers
 
-    const id = this.#em.create({ mesh, hole, tag, decoy, phase: 'rising', phaseT: 0, hold });
+    const id = this.#nextId++;
+    this.#actors.set(id, { id, mesh, hole, tag, decoy, phase: 'rising', phaseT: 0, hold });
     return { id, mesh };
   }
 
@@ -100,21 +97,20 @@ export class Actors {
     const meshes: Mesh[] = [];
     let nearId = -1;
     let nearD = proximityR;
-    this.#em.forEach((a) => {
+    for (const a of this.#actors.values()) {
       meshes.push(a.mesh);
       // ray.origin is world-space; a.mesh.position is local to the placed anchor,
       // so compare against the actor's world position (matters once the board is
       // anchored anywhere but the origin — i.e. on a real device).
       const d = a.mesh.getWorldPosition(_actorWorld).distanceTo(ray.origin);
       if (d < nearD) { nearD = d; nearId = a.id; }
-    });
+    }
     this.#raycaster.set(ray.origin, ray.direction);
     const hitMesh = this.#raycaster.intersectObjects(meshes, false)[0]?.object;
 
-    let picked: (Actor & { id: number }) | undefined;
-    this.#em.forEach((a) => {
-      if (hitMesh ? a.mesh === hitMesh : a.id === nearId) picked = a;
-    });
+    let picked: Actor | undefined;
+    if (hitMesh) { for (const a of this.#actors.values()) if (a.mesh === hitMesh) { picked = a; break; } }
+    else if (nearId >= 0) picked = this.#actors.get(nearId);
     return picked
       ? { id: picked.id, tag: picked.tag, decoy: picked.decoy, position: picked.mesh.position.clone() }
       : null;
@@ -123,12 +119,12 @@ export class Actors {
   // The live mesh for an id (so World can emit a positional sound from it before
   // despawn). undefined if the actor is already gone.
   meshOf(id: number): Mesh<CylinderGeometry, MeshPhongMaterial> | undefined {
-    return this.#em.find((x) => x.id === id)?.mesh;
+    return this.#actors.get(id)?.mesh;
   }
 
   // Remove one actor now (a collect / hit). Returns its tag + color + last position.
   despawn(id: number): RemovedActor | null {
-    const a = this.#em.find((x) => x.id === id);
+    const a = this.#actors.get(id);
     if (!a) return null;
     const removed: RemovedActor = { tag: a.tag, color: a.mesh.material.color.clone(), position: a.mesh.position.clone() };
     this.#remove(a);
@@ -139,7 +135,7 @@ export class Actors {
   // the debug key should never punish the player for a keypress it didn't aim.
   despawnAny(): RemovedActor | null {
     const ids: number[] = [];
-    this.#em.forEach((a) => { if (!a.decoy) ids.push(a.id); });
+    for (const a of this.#actors.values()) if (!a.decoy) ids.push(a.id);
     return ids.length ? this.despawn(ids[(Math.random() * ids.length) | 0]) : null;
   }
 
@@ -150,7 +146,7 @@ export class Actors {
     let missed = 0;
     // Deleting the current entry mid-iteration is safe for a Map (it has already
     // been yielded), so removal happens inline — no deferred `done` list.
-    this.#em.forEach((a) => {
+    this.#actors.forEach((a) => {
       a.phaseT += delta;
 
       if (a.phase === 'rising') {
@@ -172,12 +168,12 @@ export class Actors {
   }
 
   clear(): void {
-    this.#em.forEach((a) => {
+    this.#actors.forEach((a) => {
       a.hole.free = true;
       this.#root.remove(a.mesh);
       a.mesh.material.dispose();
     });
-    this.#em.clear();
+    this.#actors.clear();
   }
 
   dispose(): void {
@@ -187,10 +183,10 @@ export class Actors {
     this.#hornMat.dispose();
   }
 
-  #remove(a: Actor & { id: number }): void {
+  #remove(a: Actor): void {
     a.hole.free = true;
     this.#root.remove(a.mesh);
     a.mesh.material.dispose();
-    this.#em.destroy(a.id);
+    this.#actors.delete(a.id);
   }
 }
