@@ -42,44 +42,45 @@ export class Actors {
   #root: Object3D;
   #actors = new Map<number, Actor>(); // live bodies by id — inlined, single consumer
   #nextId = 0;
-  #geo: CylinderGeometry;             // normal actor body
   #raycaster = new Raycaster();
 
-  // shared decoy (unicorn) parts — one set, every unicorn reuses them
-  #decoyGeo = new CapsuleGeometry(0.045, 0.04, 4, 12); // rounder, cuter body
-  #hornGeo = new CylinderGeometry(0, 0.018, 0.05, 10); // small cone
+  #geo = new CapsuleGeometry(0.045, 0.04, 4, 12); // every body — a rounded "ghost"
+
+  // shared decoy (unicorn) trim — one set, every unicorn reuses it
+  #hornGeo = new CylinderGeometry(0, 0.022, 0.07, 10); // small cone
   #eyeGeo = new SphereGeometry(0.012, 8, 6);
-  #cheekGeo = new SphereGeometry(0.017, 8, 6);
-  #maneGeo = new TorusGeometry(0.028, 0.007, 6, 14, Math.PI * 0.8);
-  #pinkMat = new MeshPhongMaterial({ color: HORN_HEX });          // horn + cheeks
+  #cheekGeo = new SphereGeometry(0.014, 8, 6);
+  #maneGeo = new TorusGeometry(0.02, 0.005, 6, 14, Math.PI); // a little half-arc
+  #pinkMat = new MeshPhongMaterial({ color: HORN_HEX });     // horn + cheeks
   #eyeMat = new MeshPhongMaterial({ color: 0x111111 });
   #maneMat = MANE.map((c) => new MeshBasicMaterial({ color: c }));
 
   constructor(root: Object3D) {
     this.#root = root;
-    this.#geo = new CylinderGeometry(0.05, 0.05, ACTOR_H_m, 16);
   }
 
-  // A cream capsule with black eyes, pink cheeks half-sunk in the body, a small
-  // horn tipped toward the viewer, and a fan of rainbow arcs for a mane.
+  // Black sphere eyes, a hint of pink cheek buried in the body, a small horn
+  // tipped toward the viewer, and a rainbow crest of half-arcs cresting the head.
   #dressUnicorn(body: Object3D): void {
     for (const sx of [-1, 1]) {
       const eye = new Mesh(this.#eyeGeo, this.#eyeMat);
       eye.position.set(sx * 0.016, 0.02, 0.038);
       body.add(eye);
       const cheek = new Mesh(this.#cheekGeo, this.#pinkMat);
-      cheek.position.set(sx * 0.038, -0.005, 0.026); // mostly inside the capsule
+      cheek.position.set(sx * 0.03, -0.003, 0.03); // just a blush poking through
       body.add(cheek);
     }
     const horn = new Mesh(this.#hornGeo, this.#pinkMat);
-    horn.position.set(0, ACTOR_H_m / 2 + 0.01, 0.006);
+    horn.position.set(0, ACTOR_H_m / 2 + 0.02, 0.012); // up and a touch forward, clear of the mane
     horn.rotation.x = 0.22; // ~13° toward the viewer (+Z)
     body.add(horn);
+    // 5 upright half-arcs in a row across the top-back of the head — a tiny
+    // rainbow sprouting from the crest, readable from the player's side.
     this.#maneMat.forEach((mat, k) => {
       const arc = new Mesh(this.#maneGeo, mat);
-      arc.position.set(0, 0.005 + k * 0.006, -0.03);
-      arc.rotation.set(Math.PI / 2, 0, (k - 2) * 0.28); // lay it back, fan it out
-      arc.scale.setScalar(1 - k * 0.06);
+      arc.position.set((k - 2) * 0.012, ACTOR_H_m / 2 - 0.008, -0.012);
+      arc.rotation.x = -0.5; // lean the arcs back
+      arc.scale.setScalar(1 - Math.abs(k - 2) * 0.12);
       body.add(arc);
     });
   }
@@ -103,7 +104,7 @@ export class Actors {
     if (!hole.free) return null;
     hole.free = false;
 
-    const mesh = new Mesh(decoy ? this.#decoyGeo : this.#geo, new MeshPhongMaterial({ color: colorHex }));
+    const mesh = new Mesh(this.#geo, new MeshPhongMaterial({ color: colorHex }));
     mesh.castShadow = true;
     mesh.position.set(hole.x, HIDDEN_Y_m, hole.z);
     if (decoy) this.#dressUnicorn(mesh); // eyes / cheeks / horn / mane ride along with every rise / sink / cull
@@ -204,7 +205,7 @@ export class Actors {
 
   dispose(): void {
     this.clear();
-    for (const g of [this.#geo, this.#decoyGeo, this.#hornGeo, this.#eyeGeo, this.#cheekGeo, this.#maneGeo]) g.dispose();
+    for (const g of [this.#geo, this.#hornGeo, this.#eyeGeo, this.#cheekGeo, this.#maneGeo]) g.dispose();
     for (const m of [this.#pinkMat, this.#eyeMat, ...this.#maneMat]) m.dispose();
   }
 

@@ -19,18 +19,22 @@ export class BitmapGlyphs implements IGlyphSource {
   layout(text: string): Glyphs {
     const cells: Array<[number, number]> = [];
     let col = 0;
+    let lineTop = 0;   // y of the current line's top row
+    let maxCol = 0;
     for (const ch of text) {
+      if (ch === '\n') { lineTop += GLYPH_H + 1; col = 0; continue; } // blank row between lines
       const gi = this.#font.indexOf(ch);
       if (gi < 0) continue; // unknown glyph: skip it entirely, like the original
       const base = gi * GLYPH_H;
       for (let y = 0; y < GLYPH_H; y++) {
         const row = this.#font.data[base + y];
         for (let x = 0; x < GLYPH_W; x++) {
-          if ((row >> (GLYPH_W - 1 - x)) & 1) cells.push([col + x, y]);
+          if ((row >> (GLYPH_W - 1 - x)) & 1) cells.push([col + x, lineTop + y]);
         }
       }
       col += ADVANCE;
+      if (col > maxCol) maxCol = col;
     }
-    return { cells, width: Math.max(0, col - 1), height: GLYPH_H };
+    return { cells, width: Math.max(0, maxCol - 1), height: lineTop + GLYPH_H };
   }
 }
