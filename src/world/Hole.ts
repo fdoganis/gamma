@@ -11,6 +11,7 @@
 import {
   Mesh,
   MeshBasicMaterial,
+  MeshPhongMaterial,
   CylinderGeometry,
   CircleGeometry,
   RingGeometry,
@@ -25,7 +26,8 @@ const HOLE_R_m = 0.055;   // visible pit opening radius
 const CROWN_R_m = 0.06;   // occluder skirt — strictly outside the pit, no z-fight
 const BRIM_R_m = 0.13;    // occluder brim — ~= a cross arm, so a cross's brims overlap into one sheet
 const PIT_DEPTH_m = 0.28; // deep enough for a full-height body (~0.20) to vanish with travel room
-const PIT_DARK = 0x050505;
+const PIT_WALL = 0x1c1c22; // dark, but lit — the rim catches light, the depth stays black → a volume
+const PIT_DARK = 0x050505;  // the floor: flat void
 
 // --- shared resources (built once, referenced by every Hole) ---
 // Not disposed: they live for the page lifetime, which matches the rest of the
@@ -37,7 +39,7 @@ const PIT_GEO = new CylinderGeometry(HOLE_R_m, HOLE_R_m, PIT_DEPTH_m, 24, 1, tru
 const DISC_GEO = new CircleGeometry(CROWN_R_m, 20).rotateX(-Math.PI / 2);
 
 const OCC_MAT = new MeshBasicMaterial({ colorWrite: false, side: DoubleSide });
-const PIT_MAT = new MeshBasicMaterial({ color: PIT_DARK, side: BackSide });
+const PIT_MAT = new MeshPhongMaterial({ color: PIT_WALL, side: BackSide, shininess: 8 }); // lit → rim-to-floor gradient
 const FLOOR_MAT = new MeshBasicMaterial({ color: PIT_DARK, side: FrontSide }); // faces up after rotateX
 
 const OCC_ORDER = -10; // depth laid down before the actors (default order)
