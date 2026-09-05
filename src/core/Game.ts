@@ -85,9 +85,11 @@ export class Game {
     const debugL13 = __DEV__ && 'l13' in q;     // jump straight into the level 13 run
     const debugCalib = __DEV__ && 'calib' in q; // hand-whack calibration (CalibState)
     if (debugRun || debugName || debugL13 || debugCalib) {
-      this.#render.anchor.position.set(0, 0, -0.6);
+      // calib is a real-headset tool — float the board at ~table height, ~0.5m
+      // ahead, so the cubes sit over the user's actual tabletop to whack.
+      this.#render.anchor.position.set(0, debugCalib ? 0.72 : 0, debugCalib ? -0.5 : -0.6);
       this.#render.camera.position.set(0, 0.6, 0.4);
-      this.#render.camera.lookAt(0, 0, -0.6);
+      this.#render.camera.lookAt(0, debugCalib ? 0.72 : 0, -0.6);
     }
     if (debugL13) level.set(13);
     sm.start(
