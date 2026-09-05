@@ -87,15 +87,16 @@ export class RenderingManager {
     this.anchor.add(sun, sun.target);
 
 
-    const foreLight = new DirectionalLight(0xfff, 2)
+    // Parented to anchor (like sun) so the fill lighting follows the placed board.
+    const foreLight = new DirectionalLight(0xffffff, 2)
     foreLight.color.setHSL(0.6, 1, 0.6);
     foreLight.position.set(2, 2, 4)
-    this.scene.add(foreLight)
+    this.anchor.add(foreLight, foreLight.target)
 
-    const backLight = new DirectionalLight(0xfff, 4)
-    foreLight.color.setHSL(0.095, 1, 0.75);
+    const backLight = new DirectionalLight(0xffffff, 4)
+    backLight.color.setHSL(0.095, 1, 0.75);
     backLight.position.set(-1, -1, -2)
-    this.scene.add(backLight)
+    this.anchor.add(backLight, backLight.target)
 
     // Invisible: only its shadow renders, so virtual objects appear to cast a shadow
     // onto the real (passthrough) floor. Sized to comfortably cover the spawn disc.
