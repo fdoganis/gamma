@@ -1,9 +1,10 @@
 // Bodies that emerge straight up out of a Hole, hold, then sink back down and
 // despawn. Generic: an actor does not know its color means "a stolen rainbow
 // color", or why it was told to appear — RunState owns all of that.
-import { Mesh, MeshPhongMaterial, MeshBasicMaterial, CylinderGeometry, CapsuleGeometry, SphereGeometry, TorusGeometry, MathUtils, Raycaster, Vector3 } from 'three';
+import { Mesh, MeshPhongMaterial, CapsuleGeometry, MathUtils, Raycaster, Vector3 } from 'three';
 import type { Object3D, Ray, Color, BufferGeometry } from 'three';
 import { easeOutCubic } from '../animation/Easing';
+import { dressUnicorn, disposeUnicornAssets } from './unicorn';
 import type { Hole } from './Hole';
 
 const _actorWorld = new Vector3(); // scratch: actor world position for the proximity test
@@ -17,11 +18,11 @@ export type RemovedActor = { tag: number; color: Color; position: Vector3 };
 // unicorn — tapping it is punished and the body stays standing).
 export type ActorHit = { id: number; tag: number; decoy: boolean; position: Vector3 };
 
-const ACTOR_H_m = 0.12;
-const HORN_HEX = 0xd8899b;   // pink — the horn + cheeks of the decoy (the unicorn)
-const MANE = ['#F00', '#FF0', '#0F0', '#08F', '#80F']; // arc colors down the unicorn's back
-const HIDDEN_Y_m = -0.14; // center: whole body below the rim and inside the pit (fits a taller unicorn too)
-const PEEK_Y_m = 0.06;    // center: clearly above the occluder plane, so a risen body is never culled
+const BODY_R_m = 0.045;
+const BODY_LEN_m = 0.11;                              // capsule mid-section
+const BODY_HALF_m = BODY_R_m + BODY_LEN_m / 2;        // 0.10 — half the total height
+const HIDDEN_Y_m = -0.17; // center: the whole body is below the rim, inside the pit
+const PEEK_Y_m = -0.01;   // center: ~half the body clears the rim — it stays rooted in the hole
 const RISE_S = 0.25;
 const SINK_S = 0.22;
 
@@ -44,45 +45,10 @@ export class Actors {
   #nextId = 0;
   #raycaster = new Raycaster();
 
-  #geo = new CapsuleGeometry(0.045, 0.04, 4, 12); // every body — a rounded "ghost"
-
-  // shared decoy (unicorn) trim — one set, every unicorn reuses it
-  #hornGeo = new CylinderGeometry(0, 0.022, 0.07, 10); // small cone
-  #eyeGeo = new SphereGeometry(0.012, 8, 6);
-  #cheekGeo = new SphereGeometry(0.014, 8, 6);
-  #maneGeo = new TorusGeometry(0.02, 0.005, 6, 14, Math.PI); // a little half-arc
-  #pinkMat = new MeshPhongMaterial({ color: HORN_HEX });     // horn + cheeks
-  #eyeMat = new MeshPhongMaterial({ color: 0x111111 });
-  #maneMat = MANE.map((c) => new MeshBasicMaterial({ color: c }));
+  #geo = new CapsuleGeometry(BODY_R_m, BODY_LEN_m, 4, 12); // every body — a rounded "ghost"
 
   constructor(root: Object3D) {
     this.#root = root;
-  }
-
-  // Black sphere eyes, a hint of pink cheek buried in the body, a small horn
-  // tipped toward the viewer, and a rainbow crest of half-arcs cresting the head.
-  #dressUnicorn(body: Object3D): void {
-    for (const sx of [-1, 1]) {
-      const eye = new Mesh(this.#eyeGeo, this.#eyeMat);
-      eye.position.set(sx * 0.016, 0.02, 0.038);
-      body.add(eye);
-      const cheek = new Mesh(this.#cheekGeo, this.#pinkMat);
-      cheek.position.set(sx * 0.03, -0.003, 0.03); // just a blush poking through
-      body.add(cheek);
-    }
-    const horn = new Mesh(this.#hornGeo, this.#pinkMat);
-    horn.position.set(0, ACTOR_H_m / 2 + 0.02, 0.012); // up and a touch forward, clear of the mane
-    horn.rotation.x = 0.22; // ~13° toward the viewer (+Z)
-    body.add(horn);
-    // 5 upright half-arcs in a row across the top-back of the head — a tiny
-    // rainbow sprouting from the crest, readable from the player's side.
-    this.#maneMat.forEach((mat, k) => {
-      const arc = new Mesh(this.#maneGeo, mat);
-      arc.position.set((k - 2) * 0.012, ACTOR_H_m / 2 - 0.008, -0.012);
-      arc.rotation.x = -0.5; // lean the arcs back
-      arc.scale.setScalar(1 - Math.abs(k - 2) * 0.12);
-      body.add(arc);
-    });
   }
 
   get count(): number { return this.#actors.size; }
@@ -107,7 +73,7 @@ export class Actors {
     const mesh = new Mesh(this.#geo, new MeshPhongMaterial({ color: colorHex }));
     mesh.castShadow = true;
     mesh.position.set(hole.x, HIDDEN_Y_m, hole.z);
-    if (decoy) this.#dressUnicorn(mesh); // eyes / cheeks / horn / mane ride along with every rise / sink / cull
+    if (decoy) dressUnicorn(mesh, BODY_HALF_m); // trim rides along with every rise / sink / cull
     this.#root.add(mesh);
     mesh.updateWorldMatrix(true, false); // same-frame world pose for callers
 
@@ -205,8 +171,8 @@ export class Actors {
 
   dispose(): void {
     this.clear();
-    for (const g of [this.#geo, this.#hornGeo, this.#eyeGeo, this.#cheekGeo, this.#maneGeo]) g.dispose();
-    for (const m of [this.#pinkMat, this.#eyeMat, ...this.#maneMat]) m.dispose();
+    this.#geo.dispose();
+    disposeUnicornAssets();
   }
 
   #remove(a: Actor): void {

@@ -24,7 +24,7 @@ import type { Object3D } from 'three';
 const HOLE_R_m = 0.055;   // visible pit opening radius
 const CROWN_R_m = 0.06;   // occluder skirt — strictly outside the pit, no z-fight
 const BRIM_R_m = 0.13;    // occluder brim — ~= a cross arm, so a cross's brims overlap into one sheet
-const PIT_DEPTH_m = 0.22; // deep enough for a gnome (and a taller unicorn) to vanish completely
+const PIT_DEPTH_m = 0.28; // deep enough for a full-height body (~0.20) to vanish with travel room
 const PIT_DARK = 0x050505;
 
 // --- shared resources (built once, referenced by every Hole) ---
