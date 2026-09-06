@@ -186,6 +186,13 @@ export class Actors {
     this.#actors.clear();
   }
 
+  // ?tweak only: despawn every live body so the scheduler rebuilds them with the
+  // current knob values (geometry-time knobs don't apply to bodies already up).
+  respawnAll(): void {
+    if (!__DEV__) return; // dead outside the ?tweak panel — body folds away in prod
+    this.#actors.forEach((a) => this.#remove(a));
+  }
+
   dispose(): void {
     this.clear();
     this.#geo.dispose();

@@ -77,6 +77,7 @@ export class Game {
     const debugName = __DEV__ && 'name' in q;   // jump straight to NameEntryState
     const debugL13 = __DEV__ && 'l13' in q;     // jump straight into the level 13 run
     const debugCalib = __DEV__ && 'calib' in q; // hand-whack calibration (CalibState)
+    const debugTweak = __DEV__ && 'tweak' in q; // live-tune panel, over a ?run-style round
 
     sm.register(IntroState, new IntroState(sm, this.#text, this.#render.hudAnchor, score, level));
     sm.register(AnchorState, new AnchorState(this.#render, sm));
@@ -86,7 +87,7 @@ export class Game {
     sm.register(NameEntryState, new NameEntryState(sm, this.#world, this.#text, this.#render, score, level, this.#hiScore, RunState));
     if (__DEV__) sm.register(CalibState, new CalibState(sm, this.#world, this.#text, this.#render));
 
-    if (debugRun || debugName || debugL13 || debugCalib) {
+    if (debugRun || debugName || debugL13 || debugCalib || debugTweak) {
       this.#render.anchor.position.set(0, 0, -0.6);
       this.#render.camera.position.set(0, 0.6, 0.4);
       this.#render.camera.lookAt(0, 0, -0.6);
@@ -95,9 +96,10 @@ export class Game {
     sm.start(
       debugCalib ? CalibState : // its own hand-on-surface placement step
       debugName ? NameEntryState :
-      debugRun || debugL13 ? RunState :
+      debugRun || debugL13 || debugTweak ? RunState :
       IntroState,
     );
+    if (__DEV__ && debugTweak) import('../dev/tweakPanel').then((m) => m.openTweakPanel(this.#render, this.#world));
     return sm;
   }
 

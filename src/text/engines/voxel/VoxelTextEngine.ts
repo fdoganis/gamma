@@ -28,9 +28,14 @@ type VoxelHandle = {
   hasFacing: boolean; // false until the first sync, so a fresh label snaps in instead of turning from identity
 };
 
-const DEFAULT_FLOAT_HEIGHT_m = 0.08;
 const FULL_LABEL_COLOR = '#ff3333';
-const VOXEL_FILL = 0.75; // cube size as a fraction of the grid step: <1 leaves a visible gap between voxels
+
+// Exported so the DEV-only ?tweak panel can bind a lil-gui folder to it. `fill`
+// is read every frame (live); `floatHeight` is captured when a label is created.
+export const textKnobs = {
+  fill: 0.75,        // cube size as a fraction of the grid step: <1 leaves a visible gap between voxels
+  floatHeight: 0.08, // metres a label hovers above its anchor
+};
 
 // scratch — reused by every sync() call, nothing allocated per frame/label
 const _worldPos = new Vector3();
@@ -73,12 +78,12 @@ export class VoxelTextEngine implements ITextEngine {
     const offsets = this.#layout(text);
     if (this.#pool.freeCount < offsets.length) {
       this.#reportFull(anchor);
-      return { indices: [], offsets: [], color, floatHeight: DEFAULT_FLOAT_HEIGHT_m, visible: true, facing: new Quaternion(), hasFacing: false };
+      return { indices: [], offsets: [], color, floatHeight: textKnobs.floatHeight, visible: true, facing: new Quaternion(), hasFacing: false };
     }
     const indices = offsets.map(() => this.#pool.allocate()!); // capacity just checked above
     this.#paint(indices, color);
 
-    const handle: VoxelHandle = { indices, offsets, color, floatHeight: DEFAULT_FLOAT_HEIGHT_m, visible: style?.visible ?? true, facing: new Quaternion(), hasFacing: false };
+    const handle: VoxelHandle = { indices, offsets, color, floatHeight: textKnobs.floatHeight, visible: style?.visible ?? true, facing: new Quaternion(), hasFacing: false };
     if (anchor) this.sync(handle, anchor, 0);
     return handle;
   }
@@ -107,7 +112,7 @@ export class VoxelTextEngine implements ITextEngine {
 
     billboard(h, anchor, this.#camera, delta, _worldPos);
 
-    _scaleVec.setScalar(h.visible ? this.#voxelSize * VOXEL_FILL : 0);
+    _scaleVec.setScalar(h.visible ? this.#voxelSize * textKnobs.fill : 0);
     for (let i = 0; i < h.indices.length; i++) {
       _instPos.copy(h.offsets[i]).applyQuaternion(h.facing).add(_worldPos);
       _instMat.compose(_instPos, h.facing, _scaleVec);
@@ -142,7 +147,7 @@ export class VoxelTextEngine implements ITextEngine {
     const indices = offsets.map(() => this.#pool.allocate()!);
     this.#paint(indices, FULL_LABEL_COLOR);
 
-    const handle: VoxelHandle = { indices, offsets, color: FULL_LABEL_COLOR, floatHeight: DEFAULT_FLOAT_HEIGHT_m, visible: true, facing: new Quaternion(), hasFacing: false };
+    const handle: VoxelHandle = { indices, offsets, color: FULL_LABEL_COLOR, floatHeight: textKnobs.floatHeight, visible: true, facing: new Quaternion(), hasFacing: false };
     if (anchor) this.sync(handle, anchor, 0);
   }
 

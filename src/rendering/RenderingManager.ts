@@ -23,6 +23,7 @@ export class RenderingManager {
   timerAnchor: Group; // child of anchor: pinned to the placed surface, not the camera; VoxelTextEngine still billboards it to face the viewer
   scoreAnchor: Group; // child of anchor: upper-left of the rainbow, world-space
   hiAnchor: Group;    // child of anchor: upper-right — the persistent "HI ####"
+  lights?: { hemi: HemisphereLight; sun: DirectionalLight; fore: DirectionalLight; back: DirectionalLight }; // __DEV__: ?tweak panel handle
 
 
   constructor() {
@@ -100,6 +101,10 @@ export class RenderingManager {
     backLight.color.setHSL(0.58, 0.35, 0.6);
     backLight.position.set(-1, -1, -2);
     this.anchor.add(backLight, backLight.target);
+
+    if (__DEV__) this.lights = { hemi, sun, fore: foreLight, back: backLight }; // ?tweak reaches the live lights through this
+
+
 
     // Invisible: only its shadow renders, so virtual objects appear to cast a shadow
     // onto the real (passthrough) floor. Sized to comfortably cover the spawn disc.

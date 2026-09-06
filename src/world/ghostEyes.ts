@@ -14,22 +14,32 @@ const whiteMat = new MeshPhongMaterial({ color: 0xffffff });
 // Exported so the unicorn's eyes share the exact same shiny black.
 export const pupilMat = new MeshPhongMaterial({ color: 0x050505, specular: 0xffffff, shininess: 320 });
 
-const YAW_MAX = 0.8;
-const RANGE = 0.006;  // how far the pupil can roam on the eyeball
-const SPRING = 120;   // pull toward the target — higher = snappier
-const DAMP = 0.78;    // <1 leaves some overshoot → the googly jiggle
-const KICK = 0.03;    // rise/sink acceleration → pupil impulse
+// Exported so the DEV-only ?tweak panel (src/dev/tweakPanel.ts) can bind a
+// lil-gui folder straight to it. yawMax/range/spring/damp/kick are read every
+// frame; faceYFrac/whiteX/whiteZ are read when the face is built, so they take
+// effect on the next body spawn.
+export const ghostEyeKnobs = {
+  yawMax: 0.8,     // how far the face can turn toward the player
+  range: 0.006,    // how far the pupil can roam on the eyeball
+  spring: 120,     // pull toward the target — higher = snappier
+  damp: 0.78,      // <1 leaves some overshoot → the googly jiggle
+  kick: 0.03,      // rise/sink acceleration → pupil impulse
+  faceYFrac: 0.55, // face height as a fraction of the body half-height
+  whiteX: 0.014,
+  whiteZ: 0.043,
+};
 
 const _cam = new Vector3();
 
 export function dressGhost(body: Object3D, halfH: number) {
+  const k = ghostEyeKnobs;
   const face = new Object3D(); // both eyes, one yaw tracks the player
-  face.position.set(0, halfH * 0.55, 0);
+  face.position.set(0, halfH * k.faceYFrac, 0);
   body.add(face);
 
   const eyes = [-1, 1].map((sx) => {
     const white = new Mesh(eyeGeo, whiteMat);
-    white.position.set(sx * 0.014, 0, 0.043);
+    white.position.set(sx * k.whiteX, 0, k.whiteZ);
     face.add(white);
     const pupil = new Mesh(pupilGeo, pupilMat);
     pupil.position.z = 0.006;
@@ -42,20 +52,20 @@ export function dressGhost(body: Object3D, halfH: number) {
   return {
     update(delta: number, ySpeed: number, camPos: Vector3): void {
       body.worldToLocal(_cam.copy(camPos));
-      face.rotation.y = MathUtils.clamp(Math.atan2(_cam.x, _cam.z), -YAW_MAX, YAW_MAX);
+      face.rotation.y = MathUtils.clamp(Math.atan2(_cam.x, _cam.z), -k.yawMax, k.yawMax);
       face.updateMatrixWorld();
 
       face.worldToLocal(_cam.copy(camPos)); // player head in the turned face's frame
       const d = _cam.length() || 1;
-      const tx = MathUtils.clamp((_cam.x / d) * 0.02, -RANGE, RANGE);
-      const ty = MathUtils.clamp((_cam.y / d) * 0.02, -RANGE, RANGE);
+      const tx = MathUtils.clamp((_cam.x / d) * 0.02, -k.range, k.range);
+      const ty = MathUtils.clamp((_cam.y / d) * 0.02, -k.range, k.range);
 
-      const kick = (ySpeed - prevYSpeed) * KICK; // pop up → pupils lag down, then spring back
+      const kick = (ySpeed - prevYSpeed) * k.kick; // pop up → pupils lag down, then spring back
       prevYSpeed = ySpeed;
 
       for (const e of eyes) {
-        e.vx = (e.vx + (tx - e.x) * SPRING * delta) * DAMP;
-        e.vy = (e.vy + (ty - e.y - kick) * SPRING * delta) * DAMP;
+        e.vx = (e.vx + (tx - e.x) * k.spring * delta) * k.damp;
+        e.vy = (e.vy + (ty - e.y - kick) * k.spring * delta) * k.damp;
         e.x += e.vx * delta;
         e.y += e.vy * delta;
         e.pupil.position.x = e.x;

@@ -136,6 +136,9 @@ export class World {
   // where update() stops and a live burst would otherwise freeze on screen.
   clearSparkles(): void { this.#sparkles.clear(); }
 
+  // ?tweak only: force every live body to respawn with the current knob values.
+  respawnActors(): void { if (__DEV__) this.#actors.respawnAll(); }
+
   dispose(): void {
     this.#actors.dispose();
     this.#board.dispose();
