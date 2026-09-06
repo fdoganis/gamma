@@ -15,6 +15,7 @@ import { RAINBOW } from '../core/palette';
 import { GameOverState } from './GameOverState';
 import { WinState } from './WinState';
 import { Scoring } from './Scoring';
+import { devFlags } from '../dev/flags'; // __DEV__-guarded reads only → tree-shakes in prod
 import type { TextManager } from '../text/TextManager';
 import type { TextHandle } from '../text/ITextEngine';
 
@@ -132,7 +133,7 @@ export class RunState extends State {
       this.#tryUnicorn();
     }
 
-    this.#timeLeft -= delta;
+    if (!(__DEV__ && devFlags.pauseTimer)) this.#timeLeft -= delta; // ?tweak can freeze the clock
     const seconds = Math.max(0, Math.ceil(this.#timeLeft));
     if (seconds !== this.#lastShownSecond) {
       this.#lastShownSecond = seconds;

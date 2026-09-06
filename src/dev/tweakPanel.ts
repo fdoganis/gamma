@@ -13,17 +13,49 @@
 // so a good set can be pasted back into the source defaults.
 import type { RenderingManager } from '../rendering/RenderingManager';
 import type { World } from '../world/World';
+import type { AudioManager } from '../audio/AudioManager';
 import { maneKnobs, hornKnobs, uniFaceKnobs, rebuildHornGeo } from '../world/unicorn';
 import { ghostEyeKnobs } from '../world/ghostEyes';
 import { textKnobs } from '../text/engines/voxel/VoxelTextEngine';
+import { RAINBOW } from '../core/palette';
+import { devFlags } from './flags';
 
 type Light = { color: { getHexString(): string; set(v: string): void }; intensity: number; position: { x: number; y: number; z: number } };
 
-export async function openTweakPanel(render: RenderingManager, world: World): Promise<void> {
+const CUES = ['spawn', 'hit', 'unicorn', 'win', 'over', 'tick', 'music'];
+const UNICORN_HEX = '#f3ead7';
+
+export async function openTweakPanel(render: RenderingManager, world: World, audio: AudioManager): Promise<void> {
   const { default: GUI } = await import('lil-gui');
   const gui = new GUI({ title: 'gamma ?tweak' });
   const respawn = () => world.respawnActors();
   const rebuildHorn = () => { rebuildHornGeo(); respawn(); };
+
+  // --- scene: orbit the camera, freeze the clock, force a body up -------------
+  const scene = gui.addFolder('scene');
+  const { OrbitControls } = await import('three/addons/controls/OrbitControls.js');
+  const orbit = new OrbitControls(render.camera, render.renderer.domElement);
+  orbit.target.set(0, 0, -0.6);
+  orbit.update();
+  scene.add(orbit, 'enabled').name('orbit controls');
+  scene.add(devFlags, 'pauseTimer').name('pause timer');
+
+  let uniId = -1;
+  let ghostId = -1;
+  const toggleBody = (id: number, spawn: (hole: number) => number): number => {
+    if (id >= 0) { world.despawnActor(id); return -1; }
+    const hole = world.freeHoles()[0];
+    return hole == null ? -1 : spawn(hole);
+  };
+  scene.add({ 'toggle unicorn': () => { uniId = toggleBody(uniId, (h) => world.spawnAtHole(h, UNICORN_HEX, Infinity, -1, true)); } }, 'toggle unicorn');
+  scene.add({ 'toggle ghost': () => { ghostId = toggleBody(ghostId, (h) => world.spawnAtHole(h, RAINBOW[(Math.random() * RAINBOW.length) | 0], Infinity, 0)); } }, 'toggle ghost');
+
+  const sfx = gui.addFolder('audio');
+  const cue = { bgm: 'music', sfx: 'hit' };
+  sfx.add(cue, 'bgm', CUES).onChange((v: string) => audio.playBGM(v));
+  sfx.add({ 'stop bgm': () => audio.stopBGM() }, 'stop bgm');
+  sfx.add(cue, 'sfx', CUES);
+  sfx.add({ 'play sfx': () => audio.playSFX(cue.sfx) }, 'play sfx');
 
   const mane = gui.addFolder('mane');
   mane.add(maneKnobs, 'follow', 0, 1, 0.01);

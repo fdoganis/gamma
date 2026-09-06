@@ -26,7 +26,7 @@ import type { HiScore } from '../core/HiScore';
 
 // The whole 'light' glyph set — same as the HUD, nothing extra to ship.
 const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -+';
-const STEP_S = 0.12;                       // seconds per cycled character
+const STEP_S = 0.28;                       // seconds per cycled character — slow enough to read + aim a whack
 const HOLES = [0, 1, 4, 5];               // middle row, left -> right: slots A/B/C, then OK
 const PAIR = [[0, 1], [2, 3], [4, 5]];    // per slot: [cycling, locked] RAINBOW indices — red<->orange, yellow<->green, blue<->indigo
 const OK_TAG = 3;

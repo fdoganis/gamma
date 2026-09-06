@@ -102,6 +102,12 @@ export class VoxelTextEngine implements ITextEngine {
     this.#paint(h.indices, h.color); // reused pool slots keep their last owner's color — repaint every time
   }
 
+  recolor(handle: unknown, colorHex: string): void {
+    const h = handle as VoxelHandle;
+    h.color = colorHex; // so a later setText() repaints reused slots in the new color too
+    this.#paint(h.indices, colorHex);
+  }
+
   setVisible(handle: unknown, visible: boolean): void {
     (handle as VoxelHandle).visible = visible;
   }

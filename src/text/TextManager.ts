@@ -16,6 +16,8 @@ export class TextManager {
 
   setText(handle: TextHandle, text: string) { this.#engine.setText(handle, text); }
 
+  recolor(handle: TextHandle, color: string) { this.#engine.recolor?.(handle, color); }
+
   setVisible(handle: TextHandle, visible: boolean) { this.#engine.setVisible?.(handle, visible); }
 
 

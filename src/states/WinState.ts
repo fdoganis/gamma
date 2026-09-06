@@ -11,6 +11,7 @@ import type { Score } from '../core/Score';
 import type { Level } from '../core/Level';
 import type { HiScore } from '../core/HiScore';
 import { LEVEL_COUNT, l13Unlocked } from '../core/levels';
+import { RAINBOW } from '../core/palette';
 import type { AudioManager } from '../audio/AudioManager';
 
 // Between-levels screen. Reached when every rainbow color is complete before the
@@ -56,12 +57,15 @@ export class WinState extends State {
     this.#audio.activate(); // RunState.exit() deactivated it; the sting needs it back
     this.#audio.playSFX('win');
     const v = this.#level.value;
+    const inRun = v <= LEVEL_COUNT;
     const msg =
-      v <= LEVEL_COUNT ? `LEVEL ${v}` :
+      inRun ? `LEVEL ${v}` :
       v === 13 ? `RAINBOW RESTORED  ${this.#score.value}` :
       l13Unlocked() ? 'LEVEL 13' :
       `YOU WIN  ${this.#score.value}`;
+    // each level's card in its own rainbow color, red→violet; L13 in gold
     this.#text.setText(this.#message, msg);
+    this.#text.recolor(this.#message, inRun ? RAINBOW[v - 1] : v === 13 || l13Unlocked() ? '#FFD700' : '#00FF88');
     this.#text.setVisible(this.#message, true);
   }
   override exit() {

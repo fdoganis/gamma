@@ -99,7 +99,7 @@ export class Game {
       debugRun || debugL13 || debugTweak ? RunState :
       IntroState,
     );
-    if (__DEV__ && debugTweak) import('../dev/tweakPanel').then((m) => m.openTweakPanel(this.#render, this.#world));
+    if (__DEV__ && debugTweak) import('../dev/tweakPanel').then((m) => m.openTweakPanel(this.#render, this.#world, this.#audio));
     return sm;
   }
 
