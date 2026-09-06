@@ -1,4 +1,4 @@
-import { Mesh, MeshBasicMaterial, RingGeometry } from 'three';
+import { Mesh, MeshBasicMaterial, RingGeometry, Vector3 } from 'three';
 import { State } from '../core/State';
 import type { ITransition } from '../core/StateMachine';
 import type { RenderingManager } from '../rendering/RenderingManager';
@@ -7,6 +7,9 @@ import { RunState } from './RunState';
 
 const FLOOR_DIST_m = 0.6; // where the board lands when placed on the floor
 const DEV_SKIP_S = 8;     // dev/test only: no reticle ever → floor-place and go
+
+const _v = new Vector3();
+const _UP = new Vector3(0, 1, 0);
 
 export class AnchorState extends State {
   #render: RenderingManager;
@@ -35,13 +38,28 @@ export class AnchorState extends State {
 
   #onSelect = () => {
     if (this.#done || !this.#reticle.visible) return;
+    // Keep only the hit position. The hit-test pose's rotation about the surface
+    // normal is runtime-defined — Quest yaws it ~180° from where the emulator /
+    // ARCore put it, which spun the whole board (actors facing away, rainbow in
+    // front). Ignore the pose orientation and face the player instead.
     this.#reticle.matrix.decompose(
       this.#render.anchor.position,
       this.#render.anchor.quaternion,
       this.#render.anchor.scale
     );
+    this.#faceCamera();
     this.#advance();
   };
+
+  // Yaw-only toward the player's head, level with the ground — so local +Z (the
+  // actors' faces) points at the viewer and the rainbow sits behind the holes,
+  // on every runtime.
+  #faceCamera() {
+    const a = this.#render.anchor;
+    _v.copy(this.#render.camera.position).sub(a.position);
+    a.quaternion.setFromAxisAngle(_UP, Math.atan2(_v.x, _v.z));
+    a.scale.set(1, 1, 1);
+  }
 
   // No usable hit-test: put the board on the floor, ahead, facing forward, and
   // let the player reach/aim at it. local-floor space → camera.y ≈ standing
@@ -50,8 +68,7 @@ export class AnchorState extends State {
   #placeOnFloor() {
     const camY = this.#render.camera.position.y;
     this.#render.anchor.position.set(0, camY > 0.8 ? 0 : camY - 1.6, -FLOOR_DIST_m);
-    this.#render.anchor.quaternion.identity();
-    this.#render.anchor.scale.set(1, 1, 1);
+    this.#faceCamera();
     this.#advance();
   }
 
