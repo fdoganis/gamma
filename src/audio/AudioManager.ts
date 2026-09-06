@@ -56,31 +56,16 @@ export class AudioManager {
     handle.source.onended = () => { handle.output.disconnect(); pa.removeFromParent(); };
   }
 
-  // Creates a PositionalAudio permanently parented to `source`. For an
-  // emitter that outlives any single sound (a cone's hit/idle SFX): call
-  // once at spawn, keep the returned node, trigger() it as many times as
-  // needed, and disconnect() + remove it yourself when `source` is destroyed.
-  // refDistance defaults to 0.3m, not PannerNode's spec default of 1m —
-  // at 1m, every emitter in this game's ~0.6m play radius would be full
-  // volume with zero distance falloff (only HRTF direction would differ).
+  // Creates a PositionalAudio parented to `source` for a one-shot positional
+  // cue (see playAt, the only caller). refDistance defaults to 0.3m, not
+  // PannerNode's spec default of 1m — at 1m, every emitter in this game's
+  // ~0.6m play radius would be full volume with zero distance falloff (only
+  // HRTF direction would differ).
   attach(source: Object3D, refDistance = 0.3): PositionalAudio {
     const audio = new PositionalAudio(this.#listener);
     audio.setRefDistance(refDistance);
     source.add(audio);
     return audio;
-  }
-
-  // Plays through an already-attached emitter. Swaps in a fresh
-  // engine-generated node each call; the previous node disconnects itself
-  // on end, so overlapping triggers layer instead of cutting each other off.
-  trigger(audio: PositionalAudio, id: string): void {
-    if (this.#muted) { return; }
-
-
-    const handle = this.#engine.createSource(id, this.context);
-    if (!handle) { return; }
-    audio.setNodeSource(handle.output);
-    handle.source.onended = () => handle.output.disconnect();
   }
 
   // Non-positional by design. One channel, not a pool. Starting a new track
