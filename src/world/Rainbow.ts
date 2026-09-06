@@ -39,7 +39,7 @@ export class Rainbow {
       // TorusGeometry arc = PI → upper half; the sweep starts at the +X foot.
       const track = new Mesh(
         new TorusGeometry(r, TRACK_TUBE_m, RADIAL_SEG, TUBULAR_SEG, Math.PI),
-        new MeshBasicMaterial({ color: _track[i] }),
+        new MeshBasicMaterial({ color: _track[i], toneMapped: false }),
       );
       track.position.set(0, Y_OFF_m, Z_OFF_m);
       this.#root.add(track);
@@ -47,7 +47,7 @@ export class Rainbow {
 
       const fill = new Mesh(
         new TorusGeometry(r, FILL_TUBE_m, RADIAL_SEG, TUBULAR_SEG, EMPTY),
-        new MeshBasicMaterial({ color: _target[i] }),
+        new MeshBasicMaterial({ color: _target[i], toneMapped: false }),
       );
       fill.position.set(0, Y_OFF_m, Z_OFF_m);
       fill.renderOrder = 1;

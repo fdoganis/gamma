@@ -1,4 +1,4 @@
-import { BoxGeometry, Vector3, MathUtils, Matrix4, Quaternion, Color } from 'three';
+import { BoxGeometry, MeshBasicMaterial, Vector3, MathUtils, Matrix4, Quaternion, Color } from 'three';
 import type { Object3D } from 'three';
 import { InstancedPool } from '../rendering/InstancedPool';
 import { easeOutQuint } from './Easing';
@@ -54,7 +54,7 @@ export class Sparkles {
 
 
   constructor(parent: Object3D) {
-    this.#pool = new InstancedPool(parent, new BoxGeometry(), GROUP_A + GROUP_B);
+    this.#pool = new InstancedPool(parent, new BoxGeometry(), GROUP_A + GROUP_B, new MeshBasicMaterial({ toneMapped: false }));
     //this.#parent = parent; // TODO: QUESTION: no longer needed for anchoring? If so should this pool be better handled by World or RenderingManager? Particles seems to hold the lifecycle
     this.#groups = [
       this.#createGroup(GROUP_A, 0xffffff, 0.03, easeOutQuint, true), // cone color

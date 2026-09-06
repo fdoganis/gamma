@@ -9,7 +9,7 @@ import {
   PlaneGeometry,
   ShadowMaterial,
   Group,
-  ACESFilmicToneMapping,
+  NeutralToneMapping,
   SRGBColorSpace
 } from 'three';
 import { XRButton } from 'three/addons/webxr/XRButton.js';
@@ -27,8 +27,7 @@ export class RenderingManager {
 
   constructor() {
     this.renderer = new WebGLRenderer({ antialias: true, alpha: true });
-    this.renderer.toneMapping = ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.15; // softer highlights, gentle filmic rolloff
+    this.renderer.toneMapping = NeutralToneMapping; // Khronos PBR Neutral — compresses only out-of-gamut highlights, keeps hue + saturation
     this.renderer.outputColorSpace = SRGBColorSpace;
 
     this.renderer.setPixelRatio(window.devicePixelRatio);
