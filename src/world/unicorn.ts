@@ -9,6 +9,7 @@ import {
   TubeGeometry, CatmullRomCurve3, Vector3, MathUtils, type Object3D,
 } from 'three';
 import { RAINBOW } from '../core/palette';
+import { pupilMat as blackEyeMat } from './ghostEyes'; // same shiny void-black as the ghost eyes
 
 const PINK = 0xd8899b;
 const MANE = RAINBOW; // 7 strands, full ROYGBIV, protruding off the back of the head
@@ -23,22 +24,42 @@ const STRAND = new CatmullRomCurve3([
   new Vector3(0, -0.13, -0.115),      // tail, well clear of the body
 ]);
 
-const hornGeo = new CylinderGeometry(0, 0.022, 0.07, 10);
+// a spiral unicorn horn: a low-facet tapered cone with a twist baked into its
+// vertices once at load — each ring rotated about the axis by an angle that
+// grows from base (0) to tip (HORN_TURNS full turns), so the facet edges wind up
+// it like a barber pole.
+const HORN_H_m = 0.075;
+const HORN_TURNS = 2.5;
+function twistedHornGeo() {
+  const g = new CylinderGeometry(0.001, 0.02, HORN_H_m, 6, 8);
+  const pos = g.attributes.position;
+  const v = new Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i);
+    const a = HORN_TURNS * Math.PI * 2 * (v.y / HORN_H_m + 0.5);
+    const c = Math.cos(a), s = Math.sin(a);
+    pos.setXYZ(i, v.x * c - v.z * s, v.y, v.x * s + v.z * c);
+  }
+  g.computeVertexNormals();
+  return g;
+}
+
+const hornGeo = twistedHornGeo();
 const eyeGeo = new SphereGeometry(0.012, 8, 6);
-const cheekGeo = new SphereGeometry(0.009, 6, 5);
+const cheekGeo = new SphereGeometry(0.010, 6, 5);
 const maneGeo = new TubeGeometry(STRAND, 18, 0.007, 5, false); // thicker, so each strand shows
 const pinkMat = new MeshPhongMaterial({ color: PINK });
-const eyeMat = new MeshBasicMaterial({ color: 0x050505 }); // flat void black, same as the pits
 const maneMat = MANE.map((c) => new MeshBasicMaterial({ color: c }));
 
 // `halfH` = the body capsule's half-height, so the trim sits relative to it.
 export function dressUnicorn(body: Object3D, halfH: number) {
   for (const sx of [-1, 1]) {
-    const eye = new Mesh(eyeGeo, eyeMat);
+    const eye = new Mesh(eyeGeo, blackEyeMat);
     eye.position.set(sx * 0.016, halfH * 0.5, 0.038);
     body.add(eye);
     const cheek = new Mesh(cheekGeo, pinkMat);
-    cheek.position.set(sx * 0.026, halfH * 0.3, 0.02); // tucked into the body, just a hint of blush
+    cheek.position.set(sx * 0.026, halfH * 0.32, 0.033); // sits just proud of the body — a visible spot, less than the eyes
+    cheek.scale.set(1, 1, 0.55); // flattened against the face, so it reads as painted blush not a ball
     body.add(cheek);
   }
   const horn = new Mesh(hornGeo, pinkMat);
@@ -85,5 +106,5 @@ export function dressUnicorn(body: Object3D, halfH: number) {
 
 export function disposeUnicornAssets(): void {
   for (const g of [hornGeo, eyeGeo, cheekGeo, maneGeo]) g.dispose();
-  for (const m of [pinkMat, eyeMat, ...maneMat]) m.dispose();
+  for (const m of [pinkMat, ...maneMat]) m.dispose(); // blackEyeMat is owned + disposed by ghostEyes
 }

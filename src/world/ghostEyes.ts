@@ -10,8 +10,9 @@ import {
 const eyeGeo = new CapsuleGeometry(0.011, 0.012, 3, 8);
 const pupilGeo = new SphereGeometry(0.0065, 8, 6);
 const whiteMat = new MeshPhongMaterial({ color: 0xffffff });
-// void black, but wet: a tiny bright specular so the pupil always has a glint
-const pupilMat = new MeshPhongMaterial({ color: 0x050505, specular: 0xffffff, shininess: 320 });
+// void black, but wet: a tiny bright specular so the pupil always has a glint.
+// Exported so the unicorn's eyes share the exact same shiny black.
+export const pupilMat = new MeshPhongMaterial({ color: 0x050505, specular: 0xffffff, shininess: 320 });
 
 const YAW_MAX = 0.8;
 const RANGE = 0.006;  // how far the pupil can roam on the eyeball
